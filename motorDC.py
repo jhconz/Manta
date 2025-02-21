@@ -6,7 +6,7 @@ Created on Sat Jul 13 12:36:50 2024
 """
 # This is the base code for controlling brushless DC motor with ras-py
 import RPi.GPIO as GPIO
-from time import sleep
+import time
 import numpy as np
 from math import pi
 
@@ -21,24 +21,51 @@ class motorDC:
         GPIO.setmode(GPIO.BOARD)
         GPIO.setup(self.OUT1, GPIO.OUT)
         GPIO.setup(self.OUT2, GPIO.OUT)
-        self.PWM1 = GPIO.PWM(self.OUT1,1000)
-        self.PWM2 = GPIO.PWM(self.OUT2,1000)
         
         
-Pins = [32,12]
-Motor = motorDC(Pins)
-maxPWM = 50
-t = np.linspace(0,10,1000)
-u1 = maxPWM*(1+np.cos(pi*t/2))
-u2 = maxPWM*(1+np.sin(pi*t/2))
+## Initialize Motors
+Pins_A = [20,21]
+Motor_A = motorDC(Pins_A)
+Pins_B = [23,24]
+Motor_B = motorDC(Pins_B)
+Motor_A.OUT1.value = False
+Motor_A.OUT2.value = False
+Motor_B.OUT1.value = False
+Motor_B.OUT2.value = False
 
-Motor.PWM1.start(u1[0])
-Motor.PWM2.start(u2[0])
 
-for ii in range(1000):
-        Motor.PWM1.ChangeDutyCycle(u1[ii])
-        Motor.PWM2.ChangeDutyCycle(u2[ii])
-        sleep(.1)
-        
-        
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      
+## Actuation Scheme
+t_on = 2.0
+phase = 1.0
+lag = 2.0
+
+
+try:
+    ## Half Cycle to start
+    Motor_A.OUT2.value = True # Begin MA CCW
+    time.sleep(phase)
+    Motor_B.OUT2.value = True #Begin MB CCW
+    Motor_A.OUT2.value = False #End MA CCW
+    time.sleep(phase)
+    Motor_B.OUT2.value = False #End MB CCW
+    time.sleep(lag-phase)   
+    while True:
+        Motor_A.OUT1.value = True #Begin MA CW
+        time.sleep(phase)
+        Motor_B.OUT1.value = True #Begin MB CW
+        time.sleep(t_on-phase)
+        Motor_A.OUT1.value = False #End MA CW
+        time.sleep(phase)
+        Motor_B.OUT1.value = False #End MB CW
+        time.sleep(lag-phase)
+        Motor_A.OUT2.value = True # Begin MA CCW
+        time.sleep(phase)
+        Motor_B.OUT2.value = True #Begin MB CCW
+        time.sleep(t_on-phase)
+        Motor_A.OUT2.value = False #End MA CCW
+        time.sleep(phase)
+        Motor_B.OUT2.value = False #End MB CCW
+        time.sleep(lag-phase)        
+
+except KeyboardInterrupt:
+    print("End Actuation")
