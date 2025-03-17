@@ -1,4 +1,216 @@
-    def create_ui(self):
+    def setup_pinout_tab(self):
+        """Set up the pinout visualization tab"""
+        # Create main frames
+        left_frame = ttk.Frame(self.pinout_tab)
+        left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        right_frame = ttk.Frame(self.pinout_tab)
+        right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        # Motor Pins section
+        motor_frame = ttk.LabelFrame(left_frame, text="Motor Pin Configuration")
+        motor_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        # Headers
+        ttk.Label(motor_frame, text="Motor", font=("TkDefaultFont", 12, "bold")).grid(row=0, column=0, padx=5, pady=5)
+        ttk.Label(motor_frame, text="Pin Type", font=("TkDefaultFont", 12, "bold")).grid(row=0, column=1, padx=5, pady=5)
+        ttk.Label(motor_frame, text="BCM Pin#", font=("TkDefaultFont", 12, "bold")).grid(row=0, column=2, padx=5, pady=5)
+        ttk.Label(motor_frame, text="Actions", font=("TkDefaultFont", 12, "bold")).grid(row=0, column=3, padx=5, pady=5)
+        
+        # Motor 1 pins
+        ttk.Label(motor_frame, text="Motor 1").grid(row=1, column=0, padx=5, pady=5)
+        ttk.Label(motor_frame, text="IN1").grid(row=1, column=1, padx=5, pady=5)
+        self.motor1_in1_var = tk.IntVar(value=self.system.MOTOR_PINS['motor1']['in1'])
+        ttk.Entry(motor_frame, textvariable=self.motor1_in1_var, width=5).grid(row=1, column=2, padx=5, pady=5)
+        ttk.Button(motor_frame, text="Update", 
+                  command=lambda: self.update_pin("motor", "motor1", "in1")).grid(row=1, column=3, padx=5, pady=5)
+        
+        ttk.Label(motor_frame, text="Motor 1").grid(row=2, column=0, padx=5, pady=5)
+        ttk.Label(motor_frame, text="IN2").grid(row=2, column=1, padx=5, pady=5)
+        self.motor1_in2_var = tk.IntVar(value=self.system.MOTOR_PINS['motor1']['in2'])
+        ttk.Entry(motor_frame, textvariable=self.motor1_in2_var, width=5).grid(row=2, column=2, padx=5, pady=5)
+        ttk.Button(motor_frame, text="Update", 
+                  command=lambda: self.update_pin("motor", "motor1", "in2")).grid(row=2, column=3, padx=5, pady=5)
+        
+        # Motor 2 pins
+        ttk.Label(motor_frame, text="Motor 2").grid(row=3, column=0, padx=5, pady=5)
+        ttk.Label(motor_frame, text="IN1").grid(row=3, column=1, padx=5, pady=5)
+        self.motor2_in1_var = tk.IntVar(value=self.system.MOTOR_PINS['motor2']['in1'])
+        ttk.Entry(motor_frame, textvariable=self.motor2_in1_var, width=5).grid(row=3, column=2, padx=5, pady=5)
+        ttk.Button(motor_frame, text="Update", 
+                  command=lambda: self.update_pin("motor", "motor2", "in1")).grid(row=3, column=3, padx=5, pady=5)
+        
+        ttk.Label(motor_frame, text="Motor 2").grid(row=4, column=0, padx=5, pady=5)
+        ttk.Label(motor_frame, text="IN2").grid(row=4, column=1, padx=5, pady=5)
+        self.motor2_in2_var = tk.IntVar(value=self.system.MOTOR_PINS['motor2']['in2'])
+        ttk.Entry(motor_frame, textvariable=self.motor2_in2_var, width=5).grid(row=4, column=2, padx=5, pady=5)
+        ttk.Button(motor_frame, text="Update", 
+                  command=lambda: self.update_pin("motor", "motor2", "in2")).grid(row=4, column=3, padx=5, pady=5)
+        
+        # Load Cell Pins section
+        loadcell_frame = ttk.LabelFrame(right_frame, text="Load Cell Configuration")
+        loadcell_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        # Headers
+        ttk.Label(loadcell_frame, text="Sensor", font=("TkDefaultFont", 12, "bold")).grid(row=0, column=0, padx=5, pady=5)
+        ttk.Label(loadcell_frame, text="Pin Type", font=("TkDefaultFont", 12, "bold")).grid(row=0, column=1, padx=5, pady=5)
+        ttk.Label(loadcell_frame, text="BCM Pin#", font=("TkDefaultFont", 12, "bold")).grid(row=0, column=2, padx=5, pady=5)
+        ttk.Label(loadcell_frame, text="Actions", font=("TkDefaultFont", 12, "bold")).grid(row=0, column=3, padx=5, pady=5)
+        
+        # Load Cell 1 pins
+        ttk.Label(loadcell_frame, text="Sensor 1").grid(row=1, column=0, padx=5, pady=5)
+        ttk.Label(loadcell_frame, text="DOUT").grid(row=1, column=1, padx=5, pady=5)
+        self.loadcell1_dout_var = tk.IntVar(value=self.system.LOADCELL_PINS['loadcell1']['dout'])
+        ttk.Entry(loadcell_frame, textvariable=self.loadcell1_dout_var, width=5).grid(row=1, column=2, padx=5, pady=5)
+        ttk.Button(loadcell_frame, text="Update", 
+                  command=lambda: self.update_pin("loadcell", "loadcell1", "dout")).grid(row=1, column=3, padx=5, pady=5)
+        
+        ttk.Label(loadcell_frame, text="Sensor 1").grid(row=2, column=0, padx=5, pady=5)
+        ttk.Label(loadcell_frame, text="SCK").grid(row=2, column=1, padx=5, pady=5)
+        self.loadcell1_sck_var = tk.IntVar(value=self.system.LOADCELL_PINS['loadcell1']['sck'])
+        ttk.Entry(loadcell_frame, textvariable=self.loadcell1_sck_var, width=5).grid(row=2, column=2, padx=5, pady=5)
+        ttk.Button(loadcell_frame, text="Update", 
+                  command=lambda: self.update_pin("loadcell", "loadcell1", "sck")).grid(row=2, column=3, padx=5, pady=5)
+        
+        # Load Cell 2 pins
+        ttk.Label(loadcell_frame, text="Sensor 2").grid(row=3, column=0, padx=5, pady=5)
+        ttk.Label(loadcell_frame, text="DOUT").grid(row=3, column=1, padx=5, pady=5)
+        self.loadcell2_dout_var = tk.IntVar(value=self.system.LOADCELL_PINS['loadcell2']['dout'])
+        ttk.Entry(loadcell_frame, textvariable=self.loadcell2_dout_var, width=5).grid(row=3, column=2, padx=5, pady=5)
+        ttk.Button(loadcell_frame, text="Update", 
+                  command=lambda: self.update_pin("loadcell", "loadcell2", "dout")).grid(row=3, column=3, padx=5, pady=5)
+        
+        ttk.Label(loadcell_frame, text="Sensor 2").grid(row=4, column=0, padx=5, pady=5)
+        ttk.Label(loadcell_frame, text="SCK").grid(row=4, column=1, padx=5, pady=5)
+        self.loadcell2_sck_var = tk.IntVar(value=self.system.LOADCELL_PINS['loadcell2']['sck'])
+        ttk.Entry(loadcell_frame, textvariable=self.loadcell2_sck_var, width=5).grid(row=4, column=2, padx=5, pady=5)
+        ttk.Button(loadcell_frame, text="Update", 
+                  command=lambda: self.update_pin("loadcell", "loadcell2", "sck")).grid(row=4, column=3, padx=5, pady=5)
+        
+        # Load Cell 3 pins
+        ttk.Label(loadcell_frame, text="Sensor 3").grid(row=5, column=0, padx=5, pady=5)
+        ttk.Label(loadcell_frame, text="DOUT").grid(row=5, column=1, padx=5, pady=5)
+        self.loadcell3_dout_var = tk.IntVar(value=self.system.LOADCELL_PINS['loadcell3']['dout'])
+        ttk.Entry(loadcell_frame, textvariable=self.loadcell3_dout_var, width=5).grid(row=5, column=2, padx=5, pady=5)
+        ttk.Button(loadcell_frame, text="Update", 
+                  command=lambda: self.update_pin("loadcell", "loadcell3", "dout")).grid(row=5, column=3, padx=5, pady=5)
+        
+        ttk.Label(loadcell_frame, text="Sensor 3").grid(row=6, column=0, padx=5, pady=5)
+        ttk.Label(loadcell_frame, text="SCK").grid(row=6, column=1, padx=5, pady=5)
+        self.loadcell3_sck_var = tk.IntVar(value=self.system.LOADCELL_PINS['loadcell3']['sck'])
+        ttk.Entry(loadcell_frame, textvariable=self.loadcell3_sck_var, width=5).grid(row=6, column=2, padx=5, pady=5)
+        ttk.Button(loadcell_frame, text="Update", 
+                  command=lambda: self.update_pin("loadcell", "loadcell3", "sck")).grid(row=6, column=3, padx=5, pady=5)
+        
+        # Calibration Factors section
+        calib_frame = ttk.LabelFrame(right_frame, text="Calibration Factors")
+        calib_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        # Headers
+        ttk.Label(calib_frame, text="Sensor", font=("TkDefaultFont", 12, "bold")).grid(row=0, column=0, padx=5, pady=5)
+        ttk.Label(calib_frame, text="Calibration Factor", font=("TkDefaultFont", 12, "bold")).grid(row=0, column=1, padx=5, pady=5)
+        ttk.Label(calib_frame, text="Actions", font=("TkDefaultFont", 12, "bold")).grid(row=0, column=2, padx=5, pady=5)
+        
+        # Calibration factors
+        ttk.Label(calib_frame, text="Sensor 1").grid(row=1, column=0, padx=5, pady=5)
+        self.calib1_var = tk.DoubleVar(value=self.system.CALIBRATION_FACTORS['loadcell1'])
+        ttk.Entry(calib_frame, textvariable=self.calib1_var, width=10).grid(row=1, column=1, padx=5, pady=5)
+        ttk.Button(calib_frame, text="Update", 
+                  command=lambda: self.update_calibration("loadcell1")).grid(row=1, column=2, padx=5, pady=5)
+        
+        ttk.Label(calib_frame, text="Sensor 2").grid(row=2, column=0, padx=5, pady=5)
+        self.calib2_var = tk.DoubleVar(value=self.system.CALIBRATION_FACTORS['loadcell2'])
+        ttk.Entry(calib_frame, textvariable=self.calib2_var, width=10).grid(row=2, column=1, padx=5, pady=5)
+        ttk.Button(calib_frame, text="Update", 
+                  command=lambda: self.update_calibration("loadcell2")).grid(row=2, column=2, padx=5, pady=5)
+        
+        ttk.Label(calib_frame, text="Sensor 3").grid(row=3, column=0, padx=5, pady=5)
+        self.calib3_var = tk.DoubleVar(value=self.system.CALIBRATION_FACTORS['loadcell3'])
+        ttk.Entry(calib_frame, textvariable=self.calib3_var, width=10).grid(row=3, column=1, padx=5, pady=5)
+        ttk.Button(calib_frame, text="Update", 
+                  command=lambda: self.update_calibration("loadcell3")).grid(row=3, column=2, padx=5, pady=5)
+        
+        # Status message
+        self.pinout_status_var = tk.StringVar(value="Ready to update pin configuration")
+        status_label = ttk.Label(self.pinout_tab, textvariable=self.pinout_status_var, 
+                           font=("TkDefaultFont", 11), foreground="blue")
+        status_label.pack(side=tk.BOTTOM, fill=tk.X, padx=10, pady=10)
+        
+        # Raspberry Pi pinout reference
+        reference_frame = ttk.LabelFrame(left_frame, text="Raspberry Pi GPIO Reference")
+        reference_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        # Create a simple text representation of Raspberry Pi GPIO pinout
+        pinout_text = """
+        Raspberry Pi GPIO Pinout Reference (BCM numbering):
+        
+        3.3V   1 | 2   5V
+        GPIO2  3 | 4   5V
+        GPIO3  5 | 6   GND
+        GPIO4  7 | 8   GPIO14
+        GND    9 | 10  GPIO15
+        GPIO17 11| 12  GPIO18
+        GPIO27 13| 14  GND
+        GPIO22 15| 16  GPIO23
+        3.3V   17| 18  GPIO24
+        GPIO10 19| 20  GND
+        GPIO9  21| 22  GPIO25
+        GPIO11 23| 24  GPIO8
+        GND    25| 26  GPIO7
+        GPIO0  27| 28  GPIO1
+        GPIO5  29| 30  GND
+        GPIO6  31| 32  GPIO12
+        GPIO13 33| 34  GND
+        GPIO19 35| 36  GPIO16
+        GPIO26 37| 38  GPIO20
+        GND    39| 40  GPIO21
+        """
+        
+        # Create scrollable text widget for pinout reference
+        pinout_ref = scrolledtext.ScrolledText(reference_frame, wrap=tk.WORD, height=20, width=40)
+        pinout_ref.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        pinout_ref.insert(tk.END, pinout_text)
+        pinout_ref.configure(state='disabled')  # Make read-only
+        
+    def update_pin(self, pin_type, device, pin_name):
+        """Update a pin configuration"""
+        # Get the appropriate variable based on type, device, and pin name
+        var_name = f"{device}_{pin_name}_var"
+        if hasattr(self, var_name):
+            # Get the new value from the entry widget
+            new_value = getattr(self, var_name).get()
+            
+            # Update the pin in the system
+            success, message = self.system.update_pin_configuration(pin_type, device, pin_name, new_value)
+            
+            # Update status message
+            if success:
+                self.pinout_status_var.set(message)
+            else:
+                messagebox.showerror("Pin Update Error", message)
+                # Reset the entry to the current value in the system
+                current_value = self.system.MOTOR_PINS[device][pin_name] if pin_type == "motor" else self.system.LOADCELL_PINS[device][pin_name]
+                getattr(self, var_name).set(current_value)
+    
+    def update_calibration(self, device):
+        """Update a calibration factor"""
+        # Get the appropriate variable
+        var_name = f"calib{device[-1]}_var"  # e.g., calib1_var for loadcell1
+        if hasattr(self, var_name):
+            # Get the new value
+            new_value = getattr(self, var_name).get()
+            
+            # Update the calibration factor
+            success, message = self.system.update_calibration_factor(device, new_value)
+            
+            # Update status message
+            if success:
+                self.pinout_status_var.set(message)
+            else:
+                messagebox.showerror("Calibration Update Error", message)
+                # Reset the entry to the current value
+                current_value = self.system.CALIBRATION_FACTORS[device]
+                getattr(self, var_name).set(current_value)    def create_ui(self):
         """Create the user interface"""
         # Create a notebook (tabbed interface)
         self.notebook = ttk.Notebook(self.root)
@@ -8,17 +220,20 @@
         self.control_tab = ttk.Frame(self.notebook)
         self.data_tab = ttk.Frame(self.notebook)
         self.files_tab = ttk.Frame(self.notebook)
+        self.pinout_tab = ttk.Frame(self.notebook)  # New tab for pinout visualization
         self.settings_tab = ttk.Frame(self.notebook)
         
         self.notebook.add(self.control_tab, text="Control")
         self.notebook.add(self.data_tab, text="Data")
         self.notebook.add(self.files_tab, text="Files")
+        self.notebook.add(self.pinout_tab, text="Pinout")  # Add pinout tab
         self.notebook.add(self.settings_tab, text="Settings")
         
         # Setup each tab
         self.setup_control_tab()
         self.setup_data_tab()
         self.setup_files_tab()
+        self.setup_pinout_tab()  # Setup pinout tab
         self.setup_settings_tab()
         
     def setup_files_tab(self):
@@ -609,16 +824,16 @@ class MotorControlSystem:
         
         # HX711 Load Cell pins configuration
         self.LOADCELL_PINS = {
-            'loadcell1': {'dout': 5, 'sck': 6},     # BCM numbering  (Thrust)
-            'loadcell2': {'dout': 17, 'sck': 18},   # BCM numbering  (Lift 1)
-            'loadcell3': {'dout': 20, 'sck': 21}    # BCM numbering  (Lift 2)
+            'loadcell1': {'dout': 20, 'sck': 21},     # BCM numbering
+            'loadcell2': {'dout': 17, 'sck': 18},     # BCM numbering
+            'loadcell3': {'dout': 5, 'sck': 6}        # BCM numbering
         }
         
-        # Calibration factors for load cells
+        # Pre-calibrated factors for load cells
         self.CALIBRATION_FACTORS = {
-            'loadcell1': 1000.0,  # Example value, replace with actual calibration
-            'loadcell2': 1000.0,  # Example value, replace with actual calibration
-            'loadcell3': 1000.0   # Example value, replace with actual calibration
+            'loadcell1': 219.1472,    # Already calibrated
+            'loadcell2': -221.8872,   # Already calibrated 
+            'loadcell3': -221.4656    # Already calibrated
         }
         
         # Wave pattern parameters
@@ -691,6 +906,88 @@ class MotorControlSystem:
         # Hardware setup
         if PI_AVAILABLE:
             self.setup_gpio()
+            
+    def update_pin_configuration(self, pin_type, device, pin_name, new_value):
+        """Update pin configuration and restart hardware if needed"""
+        try:
+            # Convert to integer
+            new_value = int(new_value)
+            
+            # Validate pin number (Raspberry Pi has GPIO pins 0-27)
+            if new_value < 0 or new_value > 27:
+                return False, f"Invalid pin number: {new_value}. Must be between 0 and 27."
+                
+            # Update the appropriate pin configuration
+            if pin_type == "motor":
+                if device in self.MOTOR_PINS and pin_name in self.MOTOR_PINS[device]:
+                    # Store old value for reference
+                    old_value = self.MOTOR_PINS[device][pin_name]
+                    
+                    # Update value
+                    self.MOTOR_PINS[device][pin_name] = new_value
+                    
+                    # Restart hardware if running
+                    if PI_AVAILABLE:
+                        # Clean up and restart GPIO
+                        GPIO.cleanup()
+                        self.setup_gpio()
+                        
+                    return True, f"Updated {device} {pin_name} from {old_value} to {new_value}"
+                else:
+                    return False, f"Invalid motor device or pin name: {device}, {pin_name}"
+            
+            elif pin_type == "loadcell":
+                if device in self.LOADCELL_PINS and pin_name in self.LOADCELL_PINS[device]:
+                    # Store old value
+                    old_value = self.LOADCELL_PINS[device][pin_name]
+                    
+                    # Update value
+                    self.LOADCELL_PINS[device][pin_name] = new_value
+                    
+                    # Restart hardware if running
+                    if PI_AVAILABLE:
+                        # Clean up and restart GPIO
+                        GPIO.cleanup()
+                        self.setup_gpio()
+                        
+                    return True, f"Updated {device} {pin_name} from {old_value} to {new_value}"
+                else:
+                    return False, f"Invalid load cell device or pin name: {device}, {pin_name}"
+            
+            else:
+                return False, f"Invalid pin type: {pin_type}"
+                
+        except ValueError:
+            return False, f"Invalid pin number format: {new_value}. Must be an integer."
+        except Exception as e:
+            return False, f"Error updating pin configuration: {e}"
+    
+    def update_calibration_factor(self, device, new_value):
+        """Update calibration factor for a load cell"""
+        try:
+            # Convert to float
+            new_value = float(new_value)
+            
+            # Validate the device
+            if device in self.CALIBRATION_FACTORS:
+                # Store old value
+                old_value = self.CALIBRATION_FACTORS[device]
+                
+                # Update value
+                self.CALIBRATION_FACTORS[device] = new_value
+                
+                # Update load cell calibration if running
+                if PI_AVAILABLE and hasattr(self, 'load_cells') and device in self.load_cells:
+                    self.load_cells[device]._calibration = new_value
+                    
+                return True, f"Updated {device} calibration from {old_value} to {new_value}"
+            else:
+                return False, f"Invalid load cell device: {device}"
+                
+        except ValueError:
+            return False, f"Invalid calibration format: {new_value}. Must be a number."
+        except Exception as e:
+            return False, f"Error updating calibration: {e}"
             
     def generate_log_filename(self):
         """Generate a log filename based on test name and timestamp"""
@@ -1435,16 +1732,6 @@ class MotorControlGUI:
         
     def setup_settings_tab(self):
         """Set up the settings tab"""
-        # Calibration frame
-        calibration_frame = ttk.LabelFrame(self.settings_tab, text="Sensor Calibration")
-        calibration_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
-        
-        ttk.Button(calibration_frame, text="Calibrate Load Cells", 
-                 command=self.calibrate_sensors).pack(padx=10, pady=10)
-        
-        self.calibration_status_var = tk.StringVar(value="Calibration status: Not calibrated")
-        ttk.Label(calibration_frame, textvariable=self.calibration_status_var).pack(padx=10, pady=5)
-        
         # Sampling rates frame
         rates_frame = ttk.LabelFrame(self.settings_tab, text="Sampling Rates")
         rates_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
@@ -1474,14 +1761,21 @@ class MotorControlGUI:
         ttk.Button(lever_frame, text="Apply", 
                  command=self.apply_lever_arm_change).grid(row=1, column=0, columnspan=2, padx=5, pady=5)
         
+        # Display settings
+        display_frame = ttk.LabelFrame(self.settings_tab, text="Display Settings")
+        display_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+        
+        self.fullscreen_var = tk.BooleanVar(value=True)
+        ttk.Checkbutton(display_frame, text="Fullscreen Mode", 
+                       variable=self.fullscreen_var, 
+                       command=self.toggle_fullscreen).pack(padx=10, pady=5, anchor=tk.W)
+        
         # System control buttons
         control_frame = ttk.LabelFrame(self.settings_tab, text="System Control")
         control_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
         
         ttk.Button(control_frame, text="Shutdown System", 
                  command=self.on_close).pack(side=tk.LEFT, padx=20, pady=10)
-        ttk.Button(control_frame, text="Exit Fullscreen", 
-                 command=self.toggle_fullscreen).pack(side=tk.LEFT, padx=20, pady=10)
         ttk.Button(control_frame, text="Reset System", 
                  command=self.reset_system).pack(side=tk.LEFT, padx=20, pady=10)
         
@@ -1676,12 +1970,12 @@ class MotorControlGUI:
             
     def toggle_fullscreen(self):
         """Toggle fullscreen mode"""
-        is_fullscreen = self.root.attributes('-fullscreen')
-        self.root.attributes('-fullscreen', not is_fullscreen)
+        is_fullscreen = self.fullscreen_var.get()
+        self.root.attributes('-fullscreen', is_fullscreen)
         if is_fullscreen:
-            self.status_var.set("Exited fullscreen mode")
-        else:
             self.status_var.set("Entered fullscreen mode")
+        else:
+            self.status_var.set("Exited fullscreen mode")
             
     def reset_system(self):
         """Reset the system"""
