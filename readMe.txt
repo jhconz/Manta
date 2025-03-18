@@ -1,0 +1,131 @@
+Raspberry Pi Motor Control System - User Guide
+Overview
+This application provides a graphical interface for controlling motors, collecting sensor data, and managing test files on a Raspberry Pi. It's designed for a 5-inch DSI touchscreen display and optimized for ease of use in laboratory or test environments.
+Getting Started
+
+Installation:
+# Install required dependencies
+pip install RPi.GPIO adafruit-circuitpython-hx711 numpy matplotlib pandas tkinter
+
+# Run the application
+python data_collection_GUI_final.py
+
+Hardware Setup:
+
+Connect TA8248K motor drivers to the configured GPIO pins
+Connect HX711 load cell amplifiers to the configured GPIO pins
+Ensure the 5-inch DSI display is properly connected
+
+
+
+Interface Overview
+The application features a tabbed interface with the following sections:
+Control Tab
+This is where you control the motors and set up wave pattern tests.
+Test Configuration
+
+Test Name: Enter a name for your test (this will be used in the log file name)
+Set Test Name: Click to create a new log file with the specified name
+
+Wave Pattern Parameters
+
+Period: Time for one complete motor cycle (seconds)
+Phase: Delay between motor 1 and motor 2 activations (seconds)
+Latency: Off time before changing direction (seconds)
+Motor Speed: Speed percentage for motors (0-100%)
+Start in Reverse Direction: Check to begin cycle in reverse direction
+Number of Cycles: How many complete cycles to run
+
+Manual Motor Control
+
+Individual controls for Motor 1 and Motor 2 (Forward, Stop, Reverse)
+Combined controls for both motors (Both Forward, Stop All, Both Reverse)
+
+Data Tab
+View real-time sensor readings and graphs.
+
+Sensor Readings: Shows current thrust, lift, and moment values
+Cycle Information: Displays current cycle number and position in the cycle
+Raw Sensor Data: Shows raw readings from individual sensors
+Motor Status: Current state and speed of each motor
+Sensor Plot: Graph showing the last 30 seconds of sensor data
+
+Files Tab
+Manage test data files.
+
+View list of all test data files with size and modification time
+Preview file contents
+Export files to USB drive
+Delete unwanted files
+
+Pinout Tab
+Configure and verify hardware connections.
+
+Motor Pin Configuration: View and update GPIO pin assignments for motors
+Load Cell Configuration: View and update GPIO pin assignments for load cells
+Calibration Factors: View and update calibration factors for load cells
+Raspberry Pi GPIO Reference: Pinout reference for the Raspberry Pi
+
+Settings Tab
+Adjust system settings.
+
+Sampling Rates: Configure sensor sampling and motor update rates
+Physics Parameters: Set lever arm length for moment calculations
+Display Settings: Toggle fullscreen mode
+System Control: Shutdown or reset the system
+
+Basic Operations
+Running a Wave Pattern Test
+
+Go to the Control tab
+Enter a test name and click "Set Test Name"
+Configure wave pattern parameters:
+
+Set Period, Phase, and Latency values
+Adjust Motor Speed
+Set Number of Cycles
+
+
+Click "Apply Parameters" to validate and save settings
+Click "Start Wave Pattern" to begin the test
+Use "Stop Wave Pattern" to halt the test at any time
+
+Viewing and Exporting Data
+
+Go to the Data tab to view real-time data during tests
+Go to the Files tab to access saved test data
+Select a file and click "View File" to preview contents
+Insert a USB drive and click "Export to USB" to copy selected files
+All test files are automatically saved to the application directory on exit
+
+Configuring Hardware
+
+Go to the Pinout tab
+Review the current pin assignments for motors and sensors
+To change a pin assignment:
+
+Enter the new BCM pin number in the appropriate field
+Click "Update" next to the field
+
+
+To adjust calibration factors:
+
+Enter the new value in the appropriate field
+Click "Update" next to the field
+
+
+
+Troubleshooting
+
+Motors Not Responding: Check pin assignments in the Pinout tab
+No Sensor Readings: Verify load cell connections and calibration factors
+Application Not Starting: Ensure all required libraries are installed
+USB Export Failing: Check USB drive is properly mounted
+Display Issues: Toggle fullscreen mode in the Settings tab
+
+Additional Notes
+
+All data is logged in CSV format with timestamps
+Files are stored in the "test_data" directory
+The system includes automatic safeguards to prevent motor damage
+Cycle timing information is included in all log files for data analysis
