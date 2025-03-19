@@ -26,7 +26,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolb
 # For Raspberry Pi GPIO
 try:
     import RPi.GPIO as GPIO
-    import adafruit_hx711
+    from hx711 import HX711
     import board
     PI_AVAILABLE = True
 except ImportError:
@@ -312,7 +312,7 @@ class MotorControlSystem:
                 sck_pin = getattr(board, f"D{pins['sck']}")
                 
                 # Create HX711 object
-                load_cell = adafruit_hx711.HX711(sck_pin, dout_pin)
+                load_cell = HX711(sck_pin, dout_pin)
                 
                 # Configure HX711
                 load_cell.gain = 128  # A channel with gain of 128
@@ -1058,7 +1058,35 @@ class MotorControlGUI:
         self.status_var = tk.StringVar(value="System ready")
         ttk.Label(status_frame, textvariable=self.status_var, 
                 font=("TkDefaultFont", 12, "bold")).pack(padx=5, pady=5)
-
+    
+    def start_wave_pattern(self):
+        """Start the wave pattern with the configured parameters"""
+        try:
+            # Get number of cycles from UI
+            num_cycles = self.cycles_var.get()
+            
+            # Update status
+            self.status_var.set(f"Starting wave pattern for {num_cycles} cycles...")
+            
+            # Start the wave pattern
+            self.system.run_wave_pattern(num_cycles=num_cycles, callback=self.update_status)
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to start wave pattern: {e}")
+            self.status_var.set(f"Error: {e}")
+    def stop_wave_pattern(self):
+        """Stop the currently running wave pattern"""
+        try:
+            # Call the system's stop method
+            self.system.stop_wave_pattern()
+            
+            # Update status
+            self.status_var.set("Wave pattern stopped")
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to stop wave pattern: {e}")
+            self.status_var.set(f"Error: {e}")
+    
     def setup_data_tab(self):
         """Set up the data display tab"""
         # Real-time data display
