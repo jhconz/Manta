@@ -37,6 +37,8 @@ class MotorControlSystem:
     """Main class for the motor control system"""
     
     def __init__(self):
+        
+        
         # Configuration
         self.SENSOR_SAMPLE_RATE_HZ = 20   # How often to sample load cells (Hz)
         self.MOTOR_UPDATE_RATE_HZ = 50    # How often to update motors (Hz)
@@ -68,6 +70,7 @@ class MotorControlSystem:
         self.latency = 0.2        # seconds of off time before changing direction
         self.reverse = False      # whether to start in reverse direction
         self.motor_speed = 70     # motor speed as percentage (0-100)
+        self.use_pwm = True
         
         # File management
         self.data_directory = "test_data"
@@ -394,6 +397,10 @@ class MotorControlSystem:
         else:
             motor_names = [motor_name]
         
+        # If in digital mode, force speed to 100%
+        if hasattr(self, 'use_pwm') and not self.use_pwm:
+            speed = 100
+        
         # Update motor state dictionary
         for name in motor_names:
             self.motor_state[name] = {'speed': speed, 'direction': direction}
@@ -402,21 +409,34 @@ class MotorControlSystem:
         if PI_AVAILABLE:
             for name in motor_names:
                 if name in self.pwm_motors:
-                    # For TA8248K, we apply PWM to the control pins directly
-                    # TA8248K control:
-                    # IN1=PWM, IN2=0: Forward with speed control
-                    # IN1=0, IN2=PWM: Reverse with speed control
-                    # IN1=0, IN2=0: Brake/Stop
-                    
-                    if direction > 0:  # Forward
-                        self.pwm_motors[name]['in1_pwm'].ChangeDutyCycle(speed)
-                        self.pwm_motors[name]['in2_pwm'].ChangeDutyCycle(0)
-                    elif direction < 0:  # Reverse
-                        self.pwm_motors[name]['in1_pwm'].ChangeDutyCycle(0)
-                        self.pwm_motors[name]['in2_pwm'].ChangeDutyCycle(speed)
-                    else:  # Brake/Stop
-                        self.pwm_motors[name]['in1_pwm'].ChangeDutyCycle(0)
-                        self.pwm_motors[name]['in2_pwm'].ChangeDutyCycle(0)
+                    if hasattr(self, 'use_pwm') and not self.use_pwm:
+                        # Digital control mode (no PWM)
+                        if direction > 0:  # Forward
+                            GPIO.output(self.MOTOR_PINS[name]['in1'], GPIO.HIGH)
+                            GPIO.output(self.MOTOR_PINS[name]['in2'], GPIO.LOW)
+                        elif direction < 0:  # Reverse
+                            GPIO.output(self.MOTOR_PINS[name]['in1'], GPIO.LOW)
+                            GPIO.output(self.MOTOR_PINS[name]['in2'], GPIO.HIGH)
+                        else:  # Brake/Stop
+                            GPIO.output(self.MOTOR_PINS[name]['in1'], GPIO.LOW)
+                            GPIO.output(self.MOTOR_PINS[name]['in2'], GPIO.LOW)
+                    else:
+                        # PWM control mode
+                        # For TA8248K, we apply PWM to the control pins directly
+                        # TA8248K control:
+                        # IN1=PWM, IN2=0: Forward with speed control
+                        # IN1=0, IN2=PWM: Reverse with speed control
+                        # IN1=0, IN2=0: Brake/Stop
+                        
+                        if direction > 0:  # Forward
+                            self.pwm_motors[name]['in1_pwm'].ChangeDutyCycle(speed)
+                            self.pwm_motors[name]['in2_pwm'].ChangeDutyCycle(0)
+                        elif direction < 0:  # Reverse
+                            self.pwm_motors[name]['in1_pwm'].ChangeDutyCycle(0)
+                            self.pwm_motors[name]['in2_pwm'].ChangeDutyCycle(speed)
+                        else:  # Brake/Stop
+                            self.pwm_motors[name]['in1_pwm'].ChangeDutyCycle(0)
+                            self.pwm_motors[name]['in2_pwm'].ChangeDutyCycle(0)
         
         # Put command in queue for logging
         self.command_queue.put(self.motor_state.copy())
@@ -965,6 +985,22 @@ class MotorControlGUI:
         self.log_file_var = tk.StringVar(value=f"Log: {os.path.basename(self.system.log_filename)}")
         ttk.Label(test_frame, textvariable=self.log_file_var).grid(row=1, column=0, columnspan=3, padx=3, pady=1, sticky=tk.W)
         
+        # Motor control mode selection (PWM vs Digital)
+        control_mode_frame = ttk.LabelFrame(scrollable_frame, text="Motor Control Mode")
+        control_mode_frame.pack(fill=tk.X, padx=3, pady=2)
+        
+        # Create a variable to track the motor control mode
+        self.motor_control_mode = tk.StringVar(value="PWM")
+        
+        # Create radio buttons for PWM vs Digital
+        ttk.Radiobutton(control_mode_frame, text="PWM Control", 
+                       variable=self.motor_control_mode, value="PWM",
+                       command=self.update_motor_control_mode).grid(row=0, column=0, padx=10, pady=2, sticky=tk.W)
+        
+        ttk.Radiobutton(control_mode_frame, text="Digital Control", 
+                       variable=self.motor_control_mode, value="Digital",
+                       command=self.update_motor_control_mode).grid(row=0, column=1, padx=10, pady=2, sticky=tk.W)
+        
         # Wave Pattern Parameters
         wave_frame = ttk.LabelFrame(scrollable_frame, text="Wave Pattern Parameters")
         wave_frame.pack(fill=tk.X, padx=3, pady=2)
@@ -990,10 +1026,11 @@ class MotorControlGUI:
         # Speed setting
         ttk.Label(wave_frame, text="Speed (%):").grid(row=3, column=0, padx=3, pady=2, sticky=tk.W)
         self.speed_var = tk.IntVar(value=self.system.motor_speed)
-        speed_scale = ttk.Scale(wave_frame, from_=0, to=100, orient=tk.HORIZONTAL, 
+        self.speed_scale = ttk.Scale(wave_frame, from_=0, to=100, orient=tk.HORIZONTAL, 
                              variable=self.speed_var, length=150)
-        speed_scale.grid(row=3, column=1, padx=3, pady=2, sticky=tk.W+tk.E)
-        ttk.Label(wave_frame, textvariable=self.speed_var).grid(row=3, column=2, padx=3, pady=2, sticky=tk.W)
+        self.speed_scale.grid(row=3, column=1, padx=3, pady=2, sticky=tk.W+tk.E)
+        self.speed_label = ttk.Label(wave_frame, textvariable=self.speed_var)
+        self.speed_label.grid(row=3, column=2, padx=3, pady=2, sticky=tk.W)
         
         # Reverse direction checkbox
         self.reverse_var = tk.BooleanVar(value=self.system.reverse)
@@ -1075,6 +1112,24 @@ class MotorControlGUI:
         self.status_var = tk.StringVar(value="System ready")
         ttk.Label(status_frame, textvariable=self.status_var, 
                 font=("TkDefaultFont", 10, "bold")).pack(padx=3, pady=2)
+    
+    def update_motor_control_mode(self):
+        """Update the motor control mode between PWM and digital"""
+        mode = self.motor_control_mode.get()
+        
+        if mode == "PWM":
+            # Enable speed control for PWM mode
+            self.speed_scale.configure(state="normal")
+            self.speed_label.configure(state="normal")
+            self.system.use_pwm = True
+            self.status_var.set("PWM control mode activated")
+        else:  # Digital mode
+            # Fix speed at 100% for digital mode
+            self.speed_var.set(100)
+            self.speed_scale.configure(state="disabled")
+            self.speed_label.configure(state="disabled")
+            self.system.use_pwm = False
+            self.status_var.set("Digital control mode activated")
     
     def start_wave_pattern(self):
         """Start the wave pattern with the configured parameters"""
