@@ -43,7 +43,8 @@ class MotorControlSystem:
         self.SENSOR_SAMPLE_RATE_HZ = 20   # How often to sample load cells (Hz)
         self.MOTOR_UPDATE_RATE_HZ = 50    # How often to update motors (Hz)
         self.LEVER_ARM_LENGTH = 0.25      # meters - distance between load cells and center of rotation
-        
+        self.filter_window_size = 10      # Filter length
+        self.reading_history = {'loadcell1': [], 'loadcell2': [], 'loadcell3': []} #history of sensor readings
         # TA8248K Motor Driver pins configuration (no separate PWM pins)
         self.MOTOR_PINS = {
             'motor1': {'in1': 27, 'in2': 22},  # BCM numbering
@@ -304,35 +305,43 @@ class MotorControlSystem:
             motor['in1_pwm'].start(0)
             motor['in2_pwm'].start(0)
         
-        # Set up HX711 load cell amplifiers using Adafruit library
+        # Set up HX711 load cell amplifiers
         self.load_cells = {}
+        self.reading_history = {'loadcell1': [], 'loadcell2': [], 'loadcell3': []}
+        self.filter_window_size = 10  # Window size for median filter
         
         for name, pins in self.LOADCELL_PINS.items():
             try:
-                # Initialize HX711 with Adafruit library
-                # Convert GPIO pin numbers to board pins for Adafruit library
-                dout_pin = getattr(board, f"D{pins['dout']}")
-                sck_pin = getattr(board, f"D{pins['sck']}")
-                
                 # Create HX711 object
-                load_cell = HX711(sck_pin, dout_pin)
+                load_cell = HX711(pins['dout'], pins['sck'])
                 
                 # Configure HX711
-                load_cell.gain = 128  # A channel with gain of 128
+                load_cell.set_reading_format("MSB", "MSB")
                 
-                # Set calibration factor - will need to multiply readings by this
+                # Set reference unit from calibration factors
                 if name in self.CALIBRATION_FACTORS:
-                    load_cell._calibration = self.CALIBRATION_FACTORS[name]
+                    load_cell.set_reference_unit(self.CALIBRATION_FACTORS[name])
                 else:
-                    load_cell._calibration = 1.0  # Default value if not calibrated
+                    load_cell.set_reference_unit(1.0)  # Default value if not calibrated
+                
+                # Reset and tare the load cell
+                load_cell.reset()
+                load_cell.tare()
+                print(f"{name} tare done")
                 
                 # Add to dictionary
                 self.load_cells[name] = load_cell
             except Exception as e:
                 print(f"Error setting up {name}: {e}")
-
+    
+    def median_filter(self, values, window_size):
+        """Apply median filter to smooth sensor readings"""
+        if len(values) < window_size:
+            return values[-1] if values else None
+        return sorted(values[-window_size:])[window_size // 2]
+    
     def read_sensors(self):
-        """Read from load cells and calculate derived values"""
+        """Read from load cells and calculate derived values using median filtering"""
         timestamp = datetime.now().isoformat()
         raw_readings = []
         
@@ -341,16 +350,21 @@ class MotorControlSystem:
             for name in ['loadcell1', 'loadcell2', 'loadcell3']:
                 try:
                     if name in self.load_cells:
-                        # Read raw value
-                        raw_value = self.load_cells[name].read()
+                        # Read weight value (with 1 reading average)
+                        raw_value = self.load_cells[name].get_weight(1)
                         
-                        # Check if reading is valid
-                        if raw_value is None or raw_value == 0x7FFFFFFF:
-                            raw_readings.append(None)
-                        else:
-                            # Apply calibration factor to get weight
-                            weight = raw_value / self.load_cells[name]._calibration
-                            raw_readings.append(weight)
+                        # Add to history and apply median filter
+                        if name not in self.reading_history:
+                            self.reading_history[name] = []
+                        self.reading_history[name].append(raw_value)
+                        
+                        # Apply median filter
+                        filtered_value = self.median_filter(self.reading_history[name], self.filter_window_size)
+                        raw_readings.append(filtered_value)
+                        
+                        # Trim history to prevent memory growth
+                        if len(self.reading_history[name]) > self.filter_window_size * 2:
+                            self.reading_history[name] = self.reading_history[name][-self.filter_window_size:]
                     else:
                         raw_readings.append(None)
                 except Exception as e:
