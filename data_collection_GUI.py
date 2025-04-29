@@ -14,6 +14,7 @@ import csv
 from datetime import datetime
 from multiprocessing import Process, Queue, Value
 from ctypes import c_bool
+import digitalio
 
 # GUI libraries
 import tkinter as tk
