@@ -309,27 +309,36 @@ class MotorControlSystem:
         
         # Set up HX711 load cell amplifiers
         self.load_cells = {}
+        self.reference_units = self.CALIBRATION_FACTORS.copy()  # Store calibration factors
         self.reading_history = {'loadcell1': [], 'loadcell2': [], 'loadcell3': []}
         self.filter_window_size = 10  # Window size for median filter
         
         for name, pins in self.LOADCELL_PINS.items():
             try:
+                # Set up GPIO pins for HX711
+                data_pin = pins['dout']
+                clock_pin = pins['sck']
+                
+                # Configure GPIO pins for HX711
+                GPIO.setup(data_pin, GPIO.IN)
+                GPIO.setup(clock_pin, GPIO.OUT)
+                
+                # Create digitalio objects for HX711
+                data_io = digitalio.DigitalInOut(getattr(board, f'D{data_pin}'))
+                data_io.direction = digitalio.Direction.INPUT
+                
+                clock_io = digitalio.DigitalInOut(getattr(board, f'D{clock_pin}'))
+                clock_io.direction = digitalio.Direction.OUTPUT
+                
                 # Create HX711 object
-                load_cell = HX711(pins['dout'], pins['sck'])
+                load_cell = HX711(data_io, clock_io)
                 
-                # Configure HX711
-                load_cell.set_reading_format("MSB", "MSB")
+                # Store initial raw value for tare
+                raw_value = load_cell.read(HX711.CHAN_A_GAIN_128)
+                if name == 'loadcell1':
+                    load_cell.tare_value_a = raw_value  # Set tare value
                 
-                # Set reference unit from calibration factors
-                if name in self.CALIBRATION_FACTORS:
-                    load_cell.set_reference_unit(self.CALIBRATION_FACTORS[name])
-                else:
-                    load_cell.set_reference_unit(1.0)  # Default value if not calibrated
-                
-                # Reset and tare the load cell
-                load_cell.reset()
-                load_cell.tare()
-                print(f"{name} tare done")
+                print(f"{name} initialized and tared")
                 
                 # Add to dictionary
                 self.load_cells[name] = load_cell
@@ -352,13 +361,19 @@ class MotorControlSystem:
             for name in ['loadcell1', 'loadcell2', 'loadcell3']:
                 try:
                     if name in self.load_cells:
-                        # Read weight value (with 1 reading average)
-                        raw_value = self.load_cells[name].get_weight(1)
+                        # Read raw value
+                        raw_value = self.load_cells[name].read(HX711.CHAN_A_GAIN_128)
+                        
+                        # Convert to weight using reference unit
+                        if name in self.reference_units and self.reference_units[name] != 0:
+                            weight = raw_value / self.reference_units[name]
+                        else:
+                            weight = raw_value
                         
                         # Add to history and apply median filter
                         if name not in self.reading_history:
                             self.reading_history[name] = []
-                        self.reading_history[name].append(raw_value)
+                        self.reading_history[name].append(weight)
                         
                         # Apply median filter
                         filtered_value = self.median_filter(self.reading_history[name], self.filter_window_size)
@@ -1693,25 +1708,32 @@ class MotorControlGUI:
                 current_value = self.system.MOTOR_PINS[device][pin_name] if pin_type == "motor" else self.system.LOADCELL_PINS[device][pin_name]
                 getattr(self, var_name).set(current_value)
     
-    def update_calibration(self, device):
-        """Update a calibration factor"""
-        # Get the appropriate variable
-        var_name = f"calib{device[-1]}_var"  # e.g., calib1_var for loadcell1
-        if hasattr(self, var_name):
-            # Get the new value
-            new_value = getattr(self, var_name).get()
+    def update_calibration_factor(self, device, new_value):
+        """Update calibration factor for a load cell"""
+        try:
+            # Convert to float
+            new_value = float(new_value)
             
-            # Update the calibration factor
-            success, message = self.system.update_calibration_factor(device, new_value)
-            
-            # Update status message
-            if success:
-                self.pinout_status_var.set(message)
+            # Validate the device
+            if device in self.CALIBRATION_FACTORS:
+                # Store old value
+                old_value = self.CALIBRATION_FACTORS[device]
+                
+                # Update calibration factor
+                self.CALIBRATION_FACTORS[device] = new_value
+                
+                # Update reference unit if running
+                if PI_AVAILABLE and hasattr(self, 'reference_units'):
+                    self.reference_units[device] = new_value
+                    
+                return True, f"Updated {device} calibration from {old_value} to {new_value}"
             else:
-                messagebox.showerror("Calibration Update Error", message)
-                # Reset the entry to the current value
-                current_value = self.system.CALIBRATION_FACTORS[device]
-                getattr(self, var_name).set(current_value)
+                return False, f"Invalid load cell device: {device}"
+                
+        except ValueError:
+            return False, f"Invalid calibration format: {new_value}. Must be a number."
+        except Exception as e:
+            return False, f"Error updating calibration: {e}"
     
     def apply_motor1(self):
         """Apply settings to motor 1"""
