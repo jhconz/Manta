@@ -26,12 +26,14 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolb
 # For Raspberry Pi GPIO
 try:
     import RPi.GPIO as GPIO
-    from adafruit_hx711 import hx711.HX711 as HX711
+    from adafruit_hx711 import hx711
     import board
     PI_AVAILABLE = True
 except ImportError:
     print("Warning: Running in simulation mode (Raspberry Pi libraries not available)")
     PI_AVAILABLE = False
+
+HX711 = hx711.HX711
 
 class MotorControlSystem:
     """Main class for the motor control system"""
