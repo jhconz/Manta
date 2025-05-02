@@ -26,7 +26,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolb
 # For Raspberry Pi GPIO
 try:
     import RPi.GPIO as GPIO
-    from hx711 import HX711
+    from hx711.hx711 import HX711
     import board
     PI_AVAILABLE = True
 except ImportError:
