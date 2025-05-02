@@ -311,12 +311,18 @@ class MotorControlSystem:
         self.reading_history = {'loadcell1': [], 'loadcell2': [], 'loadcell3': []}
         self.filter_window_size = 10  # Window size for median filter
         
-        for name, pins in self.LOADCELL_PINS.items():
-            try:
-                # Create HX711 object
-                load_cell = HX711(pins['dout'], pins['sck'])
-                
-                # Configure HX711
+        # Initialize HX711 load cells using pins from configuration
+        try:
+            # Create HX711 objects using specified pins
+            self.load_cells['loadcell1'] = HX711(self.LOADCELL_PINS['loadcell1']['dout'], 
+                                                 self.LOADCELL_PINS['loadcell1']['sck'])
+            self.load_cells['loadcell2'] = HX711(self.LOADCELL_PINS['loadcell2']['dout'], 
+                                                 self.LOADCELL_PINS['loadcell2']['sck'])
+            self.load_cells['loadcell3'] = HX711(self.LOADCELL_PINS['loadcell3']['dout'], 
+                                                 self.LOADCELL_PINS['loadcell3']['sck'])
+            
+            # Set reading format for all load cells
+            for name, load_cell in self.load_cells.items():
                 load_cell.set_reading_format("MSB", "MSB")
                 
                 # Set reference unit from calibration factors
@@ -330,10 +336,8 @@ class MotorControlSystem:
                 load_cell.tare()
                 print(f"{name} tare done")
                 
-                # Add to dictionary
-                self.load_cells[name] = load_cell
-            except Exception as e:
-                print(f"Error setting up {name}: {e}")
+        except Exception as e:
+            print(f"Error setting up load cells: {e}")
     
     def median_filter(self, values, window_size):
         """Apply median filter to smooth sensor readings"""
@@ -351,8 +355,14 @@ class MotorControlSystem:
             for name in ['loadcell1', 'loadcell2', 'loadcell3']:
                 try:
                     if name in self.load_cells:
-                        # Read weight value (with 1 reading average)
+                        # Read weight directly using get_weight method
+                        # Use 1 reading for faster response (can be adjusted)
                         raw_value = self.load_cells[name].get_weight(1)
+                        
+                        # Apply sign adjustment based on cell position if needed
+                        # For example, like in the original code where loadcell2 and loadcell3 values are negated
+                        if name in ['loadcell2', 'loadcell3']:
+                            raw_value = -raw_value
                         
                         # Add to history and apply median filter
                         if name not in self.reading_history:
@@ -360,7 +370,8 @@ class MotorControlSystem:
                         self.reading_history[name].append(raw_value)
                         
                         # Apply median filter
-                        filtered_value = self.median_filter(self.reading_history[name], self.filter_window_size)
+                        filtered_value = self.median_filter(self.reading_history[name], 
+                                                           self.filter_window_size)
                         raw_readings.append(filtered_value)
                         
                         # Trim history to prevent memory growth
