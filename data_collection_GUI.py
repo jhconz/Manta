@@ -87,7 +87,23 @@ class MotorControlSystem:
         
         # Create data directory if it doesn't exist
         os.makedirs(self.data_directory, exist_ok=True)
+        print(f"Data directory path: {os.path.abspath(self.data_directory)}")
+        # Check data directory permissions
+        if not os.path.exists(self.data_directory):
+            print(f"Creating data directory: {self.data_directory}")
+            os.makedirs(self.data_directory, exist_ok=True)
+        else:
+            print(f"Data directory exists: {self.data_directory}")
         
+        # Check write permissions
+        try:
+            test_file = os.path.join(self.data_directory, "test_write.txt")
+            with open(test_file, 'w') as f:
+                f.write("Test")
+            os.remove(test_file)
+            print(f"Successfully verified write permissions for {self.data_directory}")
+        except Exception as e:
+            print(f"Error: No write permission for data directory: {e}")
         # Create shared flag for graceful shutdown
         self.running = Value(c_bool, True)
         
@@ -225,11 +241,15 @@ class MotorControlSystem:
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         safe_test_name = ''.join(c if c.isalnum() or c in '-_' else '_' for c in self.active_test_name)
         return os.path.join(self.data_directory, f"{safe_test_name}_{timestamp}.csv")
-    
+            
     def _init_log_file(self, filename):
         """Initialize a new log file with headers"""
-        with open(filename, 'w') as log_file:
-            log_file.write("timestamp,thrust,lift,moment,raw1,raw2,raw3,motor1_speed,motor1_dir,motor2_speed,motor2_dir,cycle_number,cycle_position,pattern_active\n")
+        try:
+            with open(filename, 'w') as log_file:
+                log_file.write("timestamp,thrust,lift,moment,raw1,raw2,raw3,motor1_speed,motor1_dir,motor2_speed,motor2_dir,cycle_number,cycle_position,pattern_active\n")
+            print(f"Successfully created log file: {filename}")  # Debug print
+        except Exception as e:
+            print(f"Error creating log file {filename}: {e}")  # Debug print
             
     def set_test_name(self, test_name):
         """Set active test name and create a new log file"""
@@ -355,10 +375,11 @@ class MotorControlSystem:
             for name in ['loadcell1', 'loadcell2', 'loadcell3']:
                 try:
                     if name in self.load_cells:
+                        print(f"Trying to read {name}...")
                         # Read weight directly using get_weight method
                         # Use 1 reading for faster response (can be adjusted)
                         raw_value = self.load_cells[name].get_weight(1)
-                        
+                        print(f"{name} raw value: {raw_value}")
                         # Apply sign adjustment based on cell position if needed
                         # For example, like in the original code where loadcell2 and loadcell3 values are negated
                         if name in ['loadcell2', 'loadcell3']:
@@ -541,14 +562,14 @@ class MotorControlSystem:
                 try:
                     # Read sensor data
                     sensor_data = self.read_sensors()
-                    
+                    print(f"Sensor data: {sensor_data['forces']['raw_readings']}")
                     # Store the latest data for GUI access
                     with self.data_lock:
                         self.latest_sensor_data = sensor_data
                     
                     # Put data in the queue for logging
                     self.sensor_queue.put(sensor_data)
-                    
+                    print("Added sensor data to queue")
                     # Sleep to maintain sample rate
                     time.sleep(1.0 / self.SENSOR_SAMPLE_RATE_HZ)
                     
@@ -602,7 +623,7 @@ class MotorControlSystem:
                     # Check for new sensor data
                     if not self.sensor_queue.empty():
                         sensor_data = self.sensor_queue.get()
-                        
+                        print(f"Logging process received data: {sensor_data['forces']['raw_readings']}")
                         # Store cycle information with sensor data for GUI access
                         with self.data_lock:
                             self.latest_sensor_data["cycle_info"] = cycle_info.copy()
@@ -1574,6 +1595,7 @@ class MotorControlGUI:
             with self.system.data_lock:
                 data = self.system.latest_sensor_data
             
+            print(f"Update display with data: {data['forces']}")
             forces = data["forces"]
             raw_readings = forces["raw_readings"]
             cycle_info = data["cycle_info"]
