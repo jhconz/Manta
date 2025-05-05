@@ -141,7 +141,6 @@ class MotorControlSystem:
         
         # Initialize log file
         self.log_filename = self.generate_log_filename()
-        self._init_log_file(self.log_filename)
         self.log_files.append(self.log_filename)
         
         # Motor state tracking
