@@ -243,13 +243,21 @@ class MotorControlSystem:
         return os.path.join(self.data_directory, f"{safe_test_name}_{timestamp}.csv")
             
     def _init_log_file(self, filename):
-        """Initialize a new log file with headers"""
+        """Initialize a new log file with headers only if needed"""
         try:
+            # Check if file already exists
+            if os.path.exists(filename):
+                file_size = os.path.getsize(filename)
+                if file_size > 0:
+                    print(f"Log file {filename} already exists with {file_size} bytes")
+                    return
+                    
+            # Create the file with headers
             with open(filename, 'w') as log_file:
                 log_file.write("timestamp,thrust,lift,moment,raw1,raw2,raw3,motor1_speed,motor1_dir,motor2_speed,motor2_dir,cycle_number,cycle_position,pattern_active\n")
-            print(f"Successfully created log file: {filename}")  # Debug print
+            print(f"Initialized log file: {filename}")
         except Exception as e:
-            print(f"Error creating log file {filename}: {e}")  # Debug print
+            print(f"Error creating log file {filename}: {e}")
             
     def set_test_name(self, test_name):
         """Set active test name and create a new log file"""
@@ -258,8 +266,8 @@ class MotorControlSystem:
             
         self.active_test_name = test_name
         self.log_filename = self.generate_log_filename()
-        self._init_log_file(self.log_filename)
         self.log_files.append(self.log_filename)
+        print(f"Test name set to {test_name}, log file will be {os.path.basename(self.log_filename)}")
         return self.log_filename
     
     def get_log_files(self):
@@ -622,12 +630,19 @@ class MotorControlSystem:
             
             # Current log file
             current_log_file = self.log_filename
+
+            first_write_done = False
+            
+            # NEW: Data counters
+            data_points_queued = 0
+            data_points_logged = 0
             
             while self.running.value:
                 try:
                     # Check if log file has changed
                     if current_log_file != self.log_filename:
                         current_log_file = self.log_filename
+                        first_write_done = False  # NEW: Reset write flag for new file
                     
                     # Check for cycle information updates
                     if not self.clock_queue.empty():
@@ -640,10 +655,19 @@ class MotorControlSystem:
                     # Check for new sensor data
                     if not self.sensor_queue.empty():
                         sensor_data = self.sensor_queue.get()
+                        data_points_queued += 1
                         print(f"Logging process received data: {sensor_data['forces']['raw_readings']}")
                         # Store cycle information with sensor data for GUI access
                         with self.data_lock:
                             self.latest_sensor_data["cycle_info"] = cycle_info.copy()
+
+                        if self.logging_active.value:
+                        # NEW: Initialize file on first write if needed
+                            if not first_write_done:
+                                if not os.path.exists(current_log_file) or os.path.getsize(current_log_file) == 0:
+                                    with open(current_log_file, 'w') as log_file:
+                                        log_file.write("timestamp,thrust,lift,moment,raw1,raw2,raw3,motor1_speed,motor1_dir,motor2_speed,motor2_dir,cycle_number,cycle_position,pattern_active\n")
+                                first_write_done = True
                         
                         # Extract values
                         timestamp = sensor_data["timestamp"]
@@ -669,16 +693,23 @@ class MotorControlSystem:
                         cycle_number = cycle_info['cycle_number']
                         cycle_position = cycle_info['cycle_position']
                         pattern_active = 1 if cycle_info['pattern_active'] else 0
-                        
+                        try:
                         # Write to log file
-                        with open(current_log_file, 'a') as log_file:
-                            log_entry = (
-                                f"{timestamp},{thrust},{lift},{moment},{raw1},{raw2},{raw3},"
-                                f"{motor1_speed},{motor1_dir},{motor2_speed},{motor2_dir},"
-                                f"{cycle_number},{cycle_position:.4f},{pattern_active}\n"
-                            )
-                            log_file.write(log_entry)
-                    
+                            with open(current_log_file, 'a') as log_file:
+                                log_entry = (
+                                    f"{timestamp},{thrust},{lift},{moment},{raw1},{raw2},{raw3},"
+                                    f"{motor1_speed},{motor1_dir},{motor2_speed},{motor2_dir},"
+                                    f"{cycle_number},{cycle_position:.4f},{pattern_active}\n"
+                                )
+                                log_file.write(log_entry)
+                                log_file.flush()  # NEW: Ensure data is written immediately
+                                data_points_logged += 1  # NEW: Count logged data
+
+                                if data_points_logged % 100 == 0:
+                                    print(f"Logged {data_points_logged} data points to {os.path.basename(current_log_file)}")
+
+                        except Exception as e:
+                            print(f"Error writing to log file {current_log_file}: {e}")
                     # Brief sleep to avoid CPU spinning
                     time.sleep(0.01)
                     
@@ -949,12 +980,14 @@ class MotorControlSystem:
         self.wave_running.value = False
         time.sleep(0.2)  # Give a moment for the thread to notice the flag
         self.stop_all_motors()
+        self.logging_active.value = False
+        print("Wave pattern stopped - logging stopped")
 
     def cleanup(self):
         """Clean up resources"""
         print("Cleaning up resources...")
         self.running.value = False
-        
+        self.logging_active.value = False
         # Stop motors
         if PI_AVAILABLE:
             try:
