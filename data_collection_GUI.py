@@ -1030,8 +1030,6 @@ class MotorControlGUI:
         
         # Start the processes
         self.processes = []
-        self.processes.append(self.system.start_sensor_process())
-        self.processes.append(self.system.start_logging_process())
         
         # Set up cleanup on window close
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
@@ -1243,9 +1241,42 @@ class MotorControlGUI:
             self.system.use_pwm = False
             self.status_var.set("Digital control mode activated")
     
+    def start_system_processes(self):
+        """Start the sensor and logging processes"""
+        if not self.processes:
+            self.status_var.set("Starting sensor and logging systems...")
+            self.processes.append(self.system.start_sensor_process())
+            self.processes.append(self.system.start_logging_process())
+            self.status_var.set("System processes started")
+            print("Sensor and logging processes started")
+        else:
+            self.status_var.set("System processes already running")
+
+    def stop_system_processes(self):
+        """Stop the sensor and logging processes"""
+        if self.processes:
+            self.status_var.set("Stopping system processes...")
+            
+            # Signal processes to stop
+            self.system.running.value = False
+            
+            # Wait for processes to terminate
+            for process in self.processes:
+                process.join(timeout=1.0)
+            
+            # Clear process list
+            self.processes = []
+            
+            self.status_var.set("System processes stopped")
+            print("Sensor and logging processes stopped")
+        else:
+            self.status_var.set("No processes running")
+    
     def start_wave_pattern(self):
         """Start the wave pattern with the configured parameters"""
         try:
+            
+            self.start_system_processes
             # Get number of cycles from UI
             num_cycles = self.cycles_var.get()
             
@@ -1258,6 +1289,7 @@ class MotorControlGUI:
         except Exception as e:
             messagebox.showerror("Error", f"Failed to start wave pattern: {e}")
             self.status_var.set(f"Error: {e}")
+    
     def stop_wave_pattern(self):
         """Stop the currently running wave pattern"""
         try:
@@ -1604,6 +1636,7 @@ class MotorControlGUI:
         status_label = ttk.Label(self.pinout_tab, textvariable=self.pinout_status_var, 
                            font=("TkDefaultFont", 9), foreground="blue")
         status_label.pack(side=tk.BOTTOM, fill=tk.X, padx=5, pady=5)
+    
     def setup_settings_tab(self):
         """Set up the settings tab"""
         # Sampling rates frame
@@ -1643,7 +1676,14 @@ class MotorControlGUI:
         ttk.Checkbutton(display_frame, text="Fullscreen Mode", 
                        variable=self.fullscreen_var, 
                        command=self.toggle_fullscreen).pack(padx=10, pady=5, anchor=tk.W)
+        # System process controls
+        process_frame = ttk.LabelFrame(self.settings_tab, text="System Processes")
+        process_frame.pack(fill=tk.X, padx=10, pady=5)
         
+        ttk.Button(process_frame, text="Start Processes", 
+                  command=self.start_system_processes, width=15).pack(side=tk.LEFT, padx=5, pady=5)
+        ttk.Button(process_frame, text="Stop Processes", 
+                  command=self.stop_system_processes, width=15).pack(side=tk.LEFT, padx=5, pady=5)
         # System control buttons
         control_frame = ttk.LabelFrame(self.settings_tab, text="System Control")
         control_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
@@ -1848,6 +1888,7 @@ class MotorControlGUI:
     
     def run_test_sequence(self):
         """Run the test sequence"""
+        self.start_system_processes
         self.status_var.set("Running test sequence...")
         self.system.run_test_sequence(callback=self.update_status)
     
@@ -2112,9 +2153,7 @@ class MotorControlGUI:
             self.system.cleanup()
             
             # Terminate processes
-            self.system.running.value = False
-            for process in self.processes:
-                process.join(timeout=1.0)
+            self.stop_system_processes()
                 
             # Exit application
             self.root.destroy()
