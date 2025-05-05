@@ -39,7 +39,7 @@ class MotorControlSystem:
     
     def __init__(self):
         
-        
+        self.logging_active = Value(c_bool, False)
         # Configuration
         self.SENSOR_SAMPLE_RATE_HZ = 20   # How often to sample load cells (Hz)
         self.MOTOR_UPDATE_RATE_HZ = 50    # How often to update motors (Hz)
@@ -522,7 +522,20 @@ class MotorControlSystem:
             ["both", -1, 50, 5],    # Both reverse at 50% for 5 seconds
             ["both", 0, 0, 2],      # Both stop for 2 seconds
         ]
+            # Enable logging for this test
+        self.logging_active.value = True
+        print(f"Starting logging to {os.path.basename(self.log_filename)}")
         
+        # Create the log file if it doesn't exist yet
+        try:
+            with open(self.log_filename, 'a') as log_file:
+                # Check if the file is empty (needs headers)
+                if log_file.tell() == 0:
+                    log_file.write("timestamp,thrust,lift,moment,raw1,raw2,raw3,motor1_speed,motor1_dir,motor2_speed,motor2_dir,cycle_number,cycle_position,pattern_active\n")
+                # Add a marker for this test
+                log_file.write(f"# Test sequence started\n")
+        except Exception as e:
+            print(f"Error preparing log file: {e}")
         # Run in a separate thread to avoid blocking the GUI
         def sequence_thread():
             try:
@@ -542,10 +555,14 @@ class MotorControlSystem:
                 if callback:
                     callback("Test sequence completed")
                 print("Test sequence completed")
+                self.logging_active.value = False
+                print("Test sequence complete - logging stopped")
+            
             except Exception as e:
                 if callback:
                     callback(f"Test sequence error: {e}")
                 print(f"Test sequence error: {e}")
+                self.logging_active.value = False
         
         # Start the thread
         thread = threading.Thread(target=sequence_thread)
@@ -576,7 +593,7 @@ class MotorControlSystem:
                 except Exception as e:
                     print(f"Error in sensor process: {e}")
                     time.sleep(0.1)  # Brief pause on error
-            
+                
             print("Sensor process stopped")
         
         # Create and start the process
@@ -703,7 +720,19 @@ class MotorControlSystem:
             time.sleep(0.5)  # Give time for previous pattern to stop
             
         self.wave_running.value = True
+        self.logging_active.value = True
+        print(f"Starting logging to {os.path.basename(self.log_filename)}")
         
+            # Create the log file if it doesn't exist yet
+        try:
+            with open(self.log_filename, 'a') as log_file:
+                # Check if the file is empty (needs headers)
+                if log_file.tell() == 0:
+                    log_file.write("timestamp,thrust,lift,moment,raw1,raw2,raw3,motor1_speed,motor1_dir,motor2_speed,motor2_dir,cycle_number,cycle_position,pattern_active\n")
+                # Add a marker for this test
+                log_file.write(f"# Wave pattern test started: {num_cycles} cycles, period={self.period}s, phase={self.phase}s\n")
+        except Exception as e:
+            print(f"Error preparing log file: {e}")
         # Reset cycle information
         self.cycle_info['cycle_number'].value = 0
         self.cycle_info['cycle_position'].value = 0.0
@@ -895,6 +924,8 @@ class MotorControlSystem:
                 if callback:
                     callback(f"Error in wave pattern: {e}")
                 print(f"Error in wave pattern: {e}")
+                self.logging_active.value = False
+                
             finally:
                 self.wave_running.value = False
                 self.cycle_info['pattern_active'].value = False
@@ -904,6 +935,8 @@ class MotorControlSystem:
                     'pattern_active': False
                 })
                 self.stop_all_motors()
+                self.logging_active.value = False
+                print(f"Wave pattern complete - logging stopped")
         
         # Start the wave pattern in a separate thread
         thread = threading.Thread(target=wave_thread)
