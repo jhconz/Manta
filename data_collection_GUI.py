@@ -1296,7 +1296,7 @@ class MotorControlGUI:
             self.system.running.value = False
             self.system.logging_active.value = False
             self.system.wave_running.value = False
-            self.syste.cycle_info['pattern_active'].value = False
+            self.system.cycle_info['pattern_active'].value = False
             
             # Wait for processes to terminate
             for process in self.processes:
