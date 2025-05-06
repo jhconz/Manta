@@ -41,7 +41,7 @@ class MotorControlSystem:
         
         self.logging_active = Value(c_bool, False)
         # Configuration
-        self.SENSOR_SAMPLE_RATE_HZ = 20   # How often to sample load cells (Hz)
+        self.SENSOR_SAMPLE_RATE_HZ = 10   # How often to sample load cells (Hz)
         self.MOTOR_UPDATE_RATE_HZ = 50    # How often to update motors (Hz)
         self.LEVER_ARM_LENGTH = 0.25      # meters - distance between load cells and center of rotation
         self.filter_window_size = 10      # Filter length
