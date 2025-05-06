@@ -1294,6 +1294,9 @@ class MotorControlGUI:
             
             # Signal processes to stop
             self.system.running.value = False
+            self.system.logging_active.value = False
+            self.system.wave_running.value = False
+            self.syste.cycle_info['pattern_active'].value = False
             
             # Wait for processes to terminate
             for process in self.processes:
@@ -1310,8 +1313,9 @@ class MotorControlGUI:
     def start_wave_pattern(self):
         """Start the wave pattern with the configured parameters"""
         try:
-            
-            self.ensure_processes_running()
+            # Reset system prior to test
+            self.stop_system_processes()
+            self.start_system_processes()
             # Get number of cycles from UI
             num_cycles = self.cycles_var.get()
             
