@@ -962,8 +962,8 @@ class MotorControlSystem:
                 
                 # Stop all motors at the end
                 self.stop_all_motors()
-                
-                # Mark pattern as inactive
+
+                        # Mark pattern as inactive
                 self.cycle_info['pattern_active'].value = False
                 self.clock_queue.put({
                     'cycle_number': self.cycle_info['cycle_number'].value,
@@ -971,14 +971,19 @@ class MotorControlSystem:
                     'pattern_active': False
                 })
                 
+                # IMPORTANT: Disable logging when pattern completes successfully
+                self.logging_active.value = False
+                
                 if callback and self.wave_running.value:
                     callback("Wave pattern completed")
                 
             except Exception as e:
                 if callback:
                     callback(f"Error in wave pattern: {e}")
-                print(f"Error in wave pattern: {e}")
-                self.logging_active.value = False
+                    print(f"Error in wave pattern: {e}")
+                    
+                    # IMPORTANT: Disable logging on error
+                    self.logging_active.value = False
                 
             finally:
                 self.wave_running.value = False
