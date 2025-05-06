@@ -207,6 +207,20 @@ class MotorControlSystem:
             return False, f"Invalid pin number format: {new_value}. Must be an integer."
         except Exception as e:
             return False, f"Error updating pin configuration: {e}"
+
+    def end_logging(self):
+        """End the current logging session with a marker"""
+        if self.logging_active.value:
+            try:
+                # Add a marker for the end of logging
+                with open(self.log_filename, 'a') as log_file:
+                    log_file.write(f"# Logging ended: {datetime.now().isoformat()}\n")
+                print(f"Logging ended for {os.path.basename(self.log_filename)}")
+            except Exception as e:
+                print(f"Error marking end of logging: {e}")
+            
+            # Disable logging flag
+            self.logging_active.value = False
     
     def update_calibration_factor(self, device, new_value):
         """Update calibration factor for a load cell"""
@@ -749,7 +763,10 @@ class MotorControlSystem:
         if self.wave_running.value:
             self.wave_running.value = False
             time.sleep(0.5)  # Give time for previous pattern to stop
-            
+
+        self.log_filename = self.generate_log_filename()
+        self.log_files.append(self.log_filename)
+        
         self.wave_running.value = True
         self.logging_active.value = True
         print(f"Starting logging to {os.path.basename(self.log_filename)}")
@@ -986,7 +1003,7 @@ class MotorControlSystem:
         self.wave_running.value = False
         time.sleep(0.2)  # Give a moment for the thread to notice the flag
         self.stop_all_motors()
-        self.logging_active.value = False
+        self.end_logging()
         print("Wave pattern stopped - logging stopped")
 
     def cleanup(self):
