@@ -1280,6 +1280,7 @@ class MotorControlGUI:
         """Start the sensor and logging processes"""
         if not self.processes:
             self.status_var.set("Starting sensor and logging systems...")
+            self.system.running.value = True
             self.processes.append(self.system.start_sensor_process())
             self.processes.append(self.system.start_logging_process())
             self.status_var.set("System processes started")
