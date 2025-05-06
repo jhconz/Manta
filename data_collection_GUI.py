@@ -613,7 +613,8 @@ class MotorControlSystem:
         """Start the data logging process"""
         def logging_process_func():
             print("Logging process started")
-            
+            self._init_log_file(self.log_filename)
+            print(f"Log file initialized: {self.log_filename}")
             # Keep track of the last motor commands
             motor_commands = {
                 'motor1': {'speed': 0, 'direction': 0},
@@ -752,6 +753,12 @@ class MotorControlSystem:
         self.wave_running.value = True
         self.logging_active.value = True
         print(f"Starting logging to {os.path.basename(self.log_filename)}")
+
+        try:
+            with open(self.log_filename, 'a') as log_file:
+                log_file.write(f"# Wave pattern test started: {num_cycles} cycles, period={self.period}s, phase={self.phase}s\n")
+        except Exception as e:
+            print(f"Error marking log file: {e}")
         
             # Create the log file if it doesn't exist yet
         try:
@@ -1222,6 +1229,13 @@ class MotorControlGUI:
         self.status_var = tk.StringVar(value="System ready")
         ttk.Label(status_frame, textvariable=self.status_var, 
                 font=("TkDefaultFont", 10, "bold")).pack(padx=3, pady=2)
+
+    def ensure_processes_running(self):
+        """Make sure sensor and logging processes are running"""
+        if not self.processes:
+            self.start_system_processes()
+            return True  # Processes were started
+        return False  # Processes were already running
     
     def update_motor_control_mode(self):
         """Update the motor control mode between PWM and digital"""
@@ -1276,7 +1290,7 @@ class MotorControlGUI:
         """Start the wave pattern with the configured parameters"""
         try:
             
-            self.start_system_processes
+            self.ensure_processes_running()
             # Get number of cycles from UI
             num_cycles = self.cycles_var.get()
             
