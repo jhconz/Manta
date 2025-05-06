@@ -627,8 +627,6 @@ class MotorControlSystem:
         """Start the data logging process"""
         def logging_process_func():
             print("Logging process started")
-            self._init_log_file(self.log_filename)
-            print(f"Log file initialized: {self.log_filename}")
             # Keep track of the last motor commands
             motor_commands = {
                 'motor1': {'speed': 0, 'direction': 0},
@@ -769,6 +767,7 @@ class MotorControlSystem:
         
         self.wave_running.value = True
         self.logging_active.value = True
+        self._init_log_file(self.log_filename)
         print(f"Starting logging to {os.path.basename(self.log_filename)}")
 
         try:
