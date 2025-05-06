@@ -683,47 +683,47 @@ class MotorControlSystem:
                                         log_file.write("timestamp,thrust,lift,moment,raw1,raw2,raw3,motor1_speed,motor1_dir,motor2_speed,motor2_dir,cycle_number,cycle_position,pattern_active\n")
                                 first_write_done = True
                         
-                        # Extract values
-                        timestamp = sensor_data["timestamp"]
-                        forces = sensor_data["forces"]
-                        raw_readings = forces["raw_readings"]
-                        
-                        # Format values for logging
-                        thrust = forces["thrust"] if forces["thrust"] is not None else "NA"
-                        lift = forces["lift"] if forces["lift"] is not None else "NA"
-                        moment = forces["moment"] if forces["moment"] is not None else "NA"
-                        
-                        raw1 = raw_readings[0] if len(raw_readings) > 0 and raw_readings[0] is not None else "NA"
-                        raw2 = raw_readings[1] if len(raw_readings) > 1 and raw_readings[1] is not None else "NA"
-                        raw3 = raw_readings[2] if len(raw_readings) > 2 and raw_readings[2] is not None else "NA"
-                        
-                        # Extract motor data
-                        motor1_speed = motor_commands['motor1']['speed'] if 'motor1' in motor_commands else 0
-                        motor1_dir = motor_commands['motor1']['direction'] if 'motor1' in motor_commands else 0
-                        motor2_speed = motor_commands['motor2']['speed'] if 'motor2' in motor_commands else 0
-                        motor2_dir = motor_commands['motor2']['direction'] if 'motor2' in motor_commands else 0
-                        
-                        # Extract cycle info
-                        cycle_number = cycle_info['cycle_number']
-                        cycle_position = cycle_info['cycle_position']
-                        pattern_active = 1 if cycle_info['pattern_active'] else 0
-                        try:
-                        # Write to log file
-                            with open(current_log_file, 'a') as log_file:
-                                log_entry = (
-                                    f"{timestamp},{thrust},{lift},{moment},{raw1},{raw2},{raw3},"
-                                    f"{motor1_speed},{motor1_dir},{motor2_speed},{motor2_dir},"
-                                    f"{cycle_number},{cycle_position:.4f},{pattern_active}\n"
-                                )
-                                log_file.write(log_entry)
-                                log_file.flush()  # NEW: Ensure data is written immediately
-                                data_points_logged += 1  # NEW: Count logged data
-
-                                if data_points_logged % 100 == 0:
-                                    print(f"Logged {data_points_logged} data points to {os.path.basename(current_log_file)}")
-
-                        except Exception as e:
-                            print(f"Error writing to log file {current_log_file}: {e}")
+                            # Extract values
+                            timestamp = sensor_data["timestamp"]
+                            forces = sensor_data["forces"]
+                            raw_readings = forces["raw_readings"]
+                            
+                            # Format values for logging
+                            thrust = forces["thrust"] if forces["thrust"] is not None else "NA"
+                            lift = forces["lift"] if forces["lift"] is not None else "NA"
+                            moment = forces["moment"] if forces["moment"] is not None else "NA"
+                            
+                            raw1 = raw_readings[0] if len(raw_readings) > 0 and raw_readings[0] is not None else "NA"
+                            raw2 = raw_readings[1] if len(raw_readings) > 1 and raw_readings[1] is not None else "NA"
+                            raw3 = raw_readings[2] if len(raw_readings) > 2 and raw_readings[2] is not None else "NA"
+                            
+                            # Extract motor data
+                            motor1_speed = motor_commands['motor1']['speed'] if 'motor1' in motor_commands else 0
+                            motor1_dir = motor_commands['motor1']['direction'] if 'motor1' in motor_commands else 0
+                            motor2_speed = motor_commands['motor2']['speed'] if 'motor2' in motor_commands else 0
+                            motor2_dir = motor_commands['motor2']['direction'] if 'motor2' in motor_commands else 0
+                            
+                            # Extract cycle info
+                            cycle_number = cycle_info['cycle_number']
+                            cycle_position = cycle_info['cycle_position']
+                            pattern_active = 1 if cycle_info['pattern_active'] else 0
+                            try:
+                            # Write to log file
+                                with open(current_log_file, 'a') as log_file:
+                                    log_entry = (
+                                        f"{timestamp},{thrust},{lift},{moment},{raw1},{raw2},{raw3},"
+                                        f"{motor1_speed},{motor1_dir},{motor2_speed},{motor2_dir},"
+                                        f"{cycle_number},{cycle_position:.4f},{pattern_active}\n"
+                                    )
+                                    log_file.write(log_entry)
+                                    log_file.flush()  # NEW: Ensure data is written immediately
+                                    data_points_logged += 1  # NEW: Count logged data
+    
+                                    if data_points_logged % 100 == 0:
+                                        print(f"Logged {data_points_logged} data points to {os.path.basename(current_log_file)}")
+    
+                            except Exception as e:
+                                print(f"Error writing to log file {current_log_file}: {e}")
                     # Brief sleep to avoid CPU spinning
                     time.sleep(0.01)
                     
