@@ -1,0 +1,53 @@
+# Install system dependencies
+sudo apt-get update
+sudo apt-get install -y python3-dev libdbus-1-dev libglib2.0-dev
+
+# Install Python dependencies
+pip3 install bleak requests protobuf --break-system-packages
+
+# Clone the repository
+git clone https://github.com/gopro/OpenGoPro.git
+
+# Navigate to the Python SDK directory
+cd OpenGoPro/demos/python/sdk_wireless_camera_control
+
+# Install it
+pip3 install . --break-system-packages
+
+# Or if you want to install in development mode (editable):
+pip3 install -e . --break-system-packages
+
+cd OpenGoPro/demos/python/sdk_wireless_camera_control
+pip3 install .[cli] --break-system-packages
+
+python3 -c "import open_gopro; print(open_gopro.__version__)"
+
+
+# 1. Pair all cameras
+bluetoothctl
+> scan on
+> pair AA:BB:CC:DD:EE:01
+> trust AA:BB:CC:DD:EE:01
+
+# 2. Use this script to enable WiFi on all cameras:
+
+from open_gopro import WirelessGoPro
+import asyncio
+
+async def enable_wifi_all(macs):
+    for mac in macs:
+        gopro = WirelessGoPro(target=mac)
+        await gopro.open()
+        await gopro.ble_command.enable_wifi_ap(enable=True)
+        await gopro.close()
+        print(f"Enabled WiFi on {mac}")
+
+macs = ["AA:BB:CC:DD:EE:01", "AA:BB:CC:DD:EE:02", 
+        "AA:BB:CC:DD:EE:03", "AA:BB:CC:DD:EE:04"]
+asyncio.run(enable_wifi_all(macs))
+
+# 3. Now discover them:
+avahi-browse -t _gopro-web._tcp
+
+# Or:
+sudo nmap -p 8080 --open 192.168.1.0/24
