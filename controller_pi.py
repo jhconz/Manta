@@ -1,5 +1,3 @@
-
-
 # -*- coding: utf-8 -*-
 """
 manta_controller_gui.py — Touchscreen control panel for the manta Pico
@@ -9,8 +7,6 @@ Hardware: Raspberry Pi 4B with 5" DSI 800x480 capacitive touchscreen
           
 Dependencies:
   - pyserial (pip install pyserial)
-  - Keypad.py from https://github.com/RogerWoollett/Keypad
-    (place in the same directory as this script)
 """
 import tkinter as tk
 from tkinter import ttk
@@ -18,7 +14,7 @@ import serial
 import struct
 import threading
 import time
-from Keypad import Keypad
+from numpad import NumPad
 
 
 # =============================================================================
@@ -155,6 +151,15 @@ class MantaControllerGUI:
         ('phase',     "Phase",       0.0,     '{:.2f}', float),
         ('cycles',    "Cycles",      1,       '{:d}',   int),
     ]
+    PARAM_LIMITS = {
+        'm0_duty':   (0,     65535),
+        'm1_duty':   (0,     65535),
+        'period':    (0.05, 4.0),
+        'm0_latent': (0.0, 1.0),
+        'm1_latent': (0.0, 1.0),
+        'phase':     (-1.0,  1.0),
+        'cycles':    (1, 100),
+    }
     
     def __init__(self, root, link=None):
         self.root = root
@@ -231,7 +236,7 @@ class MantaControllerGUI:
             entry = tk.Entry(cell, textvariable=var, font=('DejaVu Sans', 14),
                              width=10, justify='right')
             entry.pack(side='left', padx=8, fill='x', expand=True)
-            entry.bind('<Button-1>', lambda e, k=key: self._open_keypad(k))
+            entry.bind('<Button-1>', lambda e, k=key: self._open_numpad(k))
             self.vars[key] = var
             self.entries[key] = entry
     
@@ -336,6 +341,7 @@ class MantaControllerGUI:
     def _show_battery_warning(self):
         """Modal warning, requires acknowledgement.
         If a lockout is showing, hide it and restore on dismiss."""
+        NumPad.force_close()
         if self._battery_warn_dialog and self._battery_warn_dialog.winfo_exists():
             return
         
@@ -366,6 +372,7 @@ class MantaControllerGUI:
     
     def _show_battery_critical(self):
         """Modal, requires acknowledgement. Pico is shutting down regardless."""
+        NumPad.force_close()
         if self._battery_crit_dialog and self._battery_crit_dialog.winfo_exists():
             return
         
@@ -412,33 +419,29 @@ class MantaControllerGUI:
     #  Keypad integration
     # =====================================================================
     
-    def _open_keypad(self, key):
+    def _open_numpad(self, key):
         if self._sequence_running:
             return
-        spec = next(s for s in self.PARAM_SPECS if s[0] == key)
-        _, label, _, fmt, _type = spec
+        
+        if (self._battery_crit_dialog is not None and self._battery_crit_dialog.winfo_exists()):
+            return 
+        _, label, _, fmt, cast = next(s for s in self.PARAM_SPECS if s[0] == key)
+        vmin, vmax = self.PARAM_LIMITS[key]
         var = self.vars[key]
-        popup = tk.Toplevel(self.root)
-        popup.title(label)
-        popup.transient(self.root)
-        popup.grab_set()
-        popup.geometry(f"+{self.SCREEN_W//2 - 150}+{self.SCREEN_H//2 - 200}")
-        kp_var = tk.StringVar(value=var.get())
-        kp = Keypad(popup, kp_var)
-        kp.pack(padx=10, pady=10)
-        def commit():
-            try:
-                value = _type(kp_var.get())
-                var.set(fmt.format(value))
-            except ValueError:
-                pass
-            popup.destroy()
-        ttk.Button(popup, text="OK", command=commit,
-                   style='Action.TButton').pack(side='left', padx=5, pady=5,
-                                                fill='x', expand=True)
-        ttk.Button(popup, text="Cancel", command=popup.destroy,
-                   style='Action.TButton').pack(side='right', padx=5, pady=5,
-                                                fill='x', expand=True)
+        try:
+            current = cast(var.get())
+        except (ValueError, TypeError):
+            current = 0 if cast is int else 0.0
+        NumPad.edit(
+            self.root,
+            title=label,
+            initial=current,
+            cast=cast,
+            formatter=fmt,
+            vmin=vmin,
+            vmax=vmax,
+            on_commit=lambda v: var.set(fmt.format(v)),
+        )
     
     # =====================================================================
     #  Public state setters
@@ -512,7 +515,7 @@ class MantaControllerGUI:
             return
         self.link.send_powerdown()
         self._show_powerdown_confirmation()
-        self.set_status_message("Powerdown sent.")
+        self.set_status_message("Powerdown sent.")        
     
     # =====================================================================
     #  Inbound message handling
@@ -561,6 +564,8 @@ class MantaControllerGUI:
             if self._sequence_running:
                 self._sequence_running = False
                 self._dismiss_lockout()
+                
+        
 
 
 # =============================================================================
