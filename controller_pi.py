@@ -27,7 +27,7 @@ CMD_SET_MOTOR   = 0x02
 CMD_SEQ_ADD     = 0x03
 CMD_SEQ_RUN     = 0x04
 CMD_GET_STATUS  = 0x05
-CMD_POWERDOWN   = 0x06   # to be added to Pico
+CMD_POWERDOWN   = 0x06 
 
 # Status codes
 STATUS_IDLE      = 0x00

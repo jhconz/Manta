@@ -22,6 +22,7 @@ class onboard_pi:
     CMD_SEQ_ADD     = 0x03
     CMD_SEQ_RUN     = 0x04
     CMD_GET_STATUS  = 0x05
+    CMD_POWERDOWN   = 0x06
     
     # ---------- Status codes ----------
     STATUS_IDLE      = 0x00
@@ -38,18 +39,20 @@ class onboard_pi:
         CMD_SEQ_ADD:    22,
         CMD_SEQ_RUN:     4,
         CMD_GET_STATUS:  3,
+        CMD_POWERDOWN:   3,
     }
     RESPONSE_SIZE = 5
     
     # ---------- Battery / ADC constants ----------
-    DIVIDER_R1   = 47.0
-    DIVIDER_R2   = 9.3
+    DIVIDER_R1   = 46.4
+    DIVIDER_R2   = 9.8
     DIVIDER_RATIO = (DIVIDER_R1 + DIVIDER_R2) / DIVIDER_R2
     VREF         = 3.3
     ADC_MAX      = 65535
     
     V_WARNING    = 11.0
     V_SHUTDOWN   = 10.2
+    V_OFFSET = 0.20 # Measured from bench supply
     SHUTDOWN_DEBOUNCE = 10
     HYSTERESIS   = 0.3
     
@@ -105,7 +108,7 @@ class onboard_pi:
         for _ in range(samples):
             reading += self.battery_voltage.read_u16()
         v_adc = (reading / (samples * self.ADC_MAX)) * self.VREF
-        return v_adc * self.DIVIDER_RATIO
+        return v_adc * self.DIVIDER_RATIO - self.V_OFFSET
     
     def check_battery_voltage(self):
         v = self.read_battery_voltage()
@@ -327,6 +330,10 @@ class onboard_pi:
         elif cmd == self.CMD_GET_STATUS:
             info1 = 1 if self.running else 0
             self.send_response(self.STATUS_DONE, info1)
+            
+        elif cmd == self.CMD_POWERDOWN:
+            self.send_response(self.STATUS_DONE)
+            self.software_shutdown()
         
         else:
             self.send_response(self.STATUS_ERROR, 0xFF)
