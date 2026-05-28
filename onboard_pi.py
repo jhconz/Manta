@@ -23,12 +23,13 @@ class onboard_pi:
     CMD_SEQ_RUN     = 0x04
     CMD_GET_STATUS  = 0x05
     CMD_POWERDOWN   = 0x06
-    
+    CMD_PING		= 0x7
     # ---------- Status codes ----------
     STATUS_IDLE      = 0x00
     STATUS_ACK       = 0x01
     STATUS_DONE      = 0x02
     STATUS_ERROR     = 0x03
+    STATUS_PONG		 = 0x04
     STATUS_BAT_WARN  = 0xF0
     STATUS_BAT_CRIT  = 0xF1
     
@@ -40,6 +41,7 @@ class onboard_pi:
         CMD_SEQ_RUN:     4,
         CMD_GET_STATUS:  3,
         CMD_POWERDOWN:   3,
+        CMD_PING:		 3,
     }
     RESPONSE_SIZE = 5
     
@@ -293,50 +295,59 @@ class onboard_pi:
         
         self.send_response(self.STATUS_ACK)
         
-        if cmd == self.CMD_STOP:
-            self.stop_all_motors()
-            self.send_response(self.STATUS_DONE)
-        
-        elif cmd == self.CMD_SET_MOTOR:
-            try:
-                _, m0_duty, m1_duty, period, m0_lat, m1_lat, phase, _ = \
-                    struct.unpack('>BHHffffB', frame)
-            except Exception:
-                self.send_response(self.STATUS_ERROR, 0x02)
-                return
-            self.set_motor_state(m0_duty, m1_duty, period, m0_lat, m1_lat, phase)
-            self.send_response(self.STATUS_DONE)
-        
-        elif cmd == self.CMD_SEQ_ADD:
-            self.send_response(self.STATUS_DONE)
-        
-        elif cmd == self.CMD_SEQ_RUN:
-            try:
-                _, cycles, _ = struct.unpack('>BHB', frame)
-            except Exception:
-                self.send_response(self.STATUS_ERROR, 0x02)
-                return
+        try:
+            if cmd == self.CMD_STOP:
+                self.stop_all_motors()
+                self.send_response(self.STATUS_DONE)
             
-            if self._motor_thread_active:
-                self.send_response(self.STATUS_ERROR, 0x04)  # busy
-                return
-            if self._motor_params is None or cycles <= 0:
-                self.send_response(self.STATUS_ERROR, 0x05)  # invalid request
-                return
+            elif cmd == self.CMD_SET_MOTOR:
+                try:
+                    _, m0_duty, m1_duty, period, m0_lat, m1_lat, phase, _ = \
+                        struct.unpack('>BHHffffB', frame)
+                except Exception:
+                    self.send_response(self.STATUS_ERROR, 0x02)
+                    return
+                self.set_motor_state(m0_duty, m1_duty, period, m0_lat, m1_lat, phase)
+                self.send_response(self.STATUS_DONE)
             
-            self._motor_thread_active = True
-            _thread.start_new_thread(self._motor_thread_entry, (cycles,))
-        
-        elif cmd == self.CMD_GET_STATUS:
-            info1 = 1 if self.running else 0
-            self.send_response(self.STATUS_DONE, info1)
+            elif cmd == self.CMD_SEQ_ADD:
+                self.send_response(self.STATUS_DONE)
             
-        elif cmd == self.CMD_POWERDOWN:
-            self.send_response(self.STATUS_DONE)
-            self.software_shutdown()
+            elif cmd == self.CMD_SEQ_RUN:
+                try:
+                    _, cycles, _ = struct.unpack('>BHB', frame)
+                except Exception:
+                    self.send_response(self.STATUS_ERROR, 0x02)
+                    return
+                
+                if self._motor_thread_active:
+                    self.send_response(self.STATUS_ERROR, 0x04)
+                    return
+                if self._motor_params is None or cycles <= 0:
+                    self.send_response(self.STATUS_ERROR, 0x05)
+                    return
+                
+                self._motor_thread_active = True
+                _thread.start_new_thread(self._motor_thread_entry, (cycles,))
+            
+            elif cmd == self.CMD_GET_STATUS:
+                info1 = 1 if self.running else 0
+                self.send_response(self.STATUS_DONE, info1)
+            
+            elif cmd == self.CMD_POWERDOWN:
+                self.send_response(self.STATUS_DONE)
+                self.software_shutdown()
+            
+            elif cmd == self.CMD_PING:
+                self.send_response(self.STATUS_PONG)
+            
+            else:
+                self.send_response(self.STATUS_ERROR, 0xFF)
         
-        else:
-            self.send_response(self.STATUS_ERROR, 0xFF)
+        except Exception as e:
+            # Catch-all: any unhandled exception inside a command handler.
+            # Tag with cmd code in info2 so the Pi can tell *which* handler died.
+            self.send_response(self.STATUS_ERROR, 0x10, cmd)
     
     # =====================================================================
     #  Main loop entry point
