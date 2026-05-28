@@ -28,12 +28,14 @@ CMD_SEQ_ADD     = 0x03
 CMD_SEQ_RUN     = 0x04
 CMD_GET_STATUS  = 0x05
 CMD_POWERDOWN   = 0x06 
+CMD_PING        = 0x07
 
 # Status codes
 STATUS_IDLE      = 0x00
 STATUS_ACK       = 0x01
 STATUS_DONE      = 0x02
 STATUS_ERROR     = 0x03
+STATUS_PONG      = 0x04
 STATUS_BAT_WARN  = 0xF0
 STATUS_BAT_CRIT  = 0xF1
 
@@ -63,6 +65,32 @@ class PicoLink:
         self._stop = False
         self._rx_thread = threading.Thread(target=self._rx_loop, daemon=True)
         self._rx_thread.start()
+    
+    def ping(self, timeout=1.0):
+        """Send a CMD_PING and wait up to `timeout` seconds for STATUS_PONG.
+        Returns True on success, False on timeout.
+    
+        Temporarily intercepts on_message to catch the reply without disturbing
+        the normal dispatcher.
+        """
+        received = threading.Event()
+        
+        original_handler = self.on_message
+        def watcher(status, i1, i2, i3):
+            if status == STATUS_PONG:
+                received.set()
+            # Always also forward to the real handler so ACKs/etc. aren't swallowed
+            if original_handler:
+                original_handler(status, i1, i2, i3)
+        
+        self.on_message = watcher
+        try:
+            frame = bytes([CMD_PING, 0])
+            self.send_frame(frame + bytes([xor_checksum(frame)]))
+            return received.wait(timeout=timeout)
+        finally:
+            self.on_message = original_handler
+    
     
     def close(self):
         self._stop = True
@@ -406,15 +434,6 @@ class MantaControllerGUI:
             auto_close_ms=3000
         )
     
-    def _show_error(self, code):
-        self._make_dialog(
-            title="Pico Error",
-            message=f"The Pico reported an error.\n\nCode: 0x{code:02X}",
-            bg_color='#c0392b',
-            modal=True,
-            auto_close_ms=5000
-        )
-    
     # =====================================================================
     #  Keypad integration
     # =====================================================================
@@ -517,6 +536,26 @@ class MantaControllerGUI:
         self._show_powerdown_confirmation()
         self.set_status_message("Powerdown sent.")        
     
+    def _show_error(self, code, cmd=None):
+        if code == 0x10 and cmd is not None:
+            cmd_names = {
+                0x01: 'STOP', 0x02: 'SET_MOTOR', 0x03: 'SEQ_ADD',
+                0x04: 'SEQ_RUN', 0x05: 'GET_STATUS', 0x06: 'POWERDOWN',
+                0x07: 'PING',
+            }
+            cmd_name = cmd_names.get(cmd, f'0x{cmd:02X}')
+            message = f"Exception in {cmd_name} handler on the Pico."
+        else:
+            message = f"The Pico reported an error.\n\nCode: 0x{code:02X}"
+        
+        self._make_dialog(
+            title="Pico Error",
+            message=message,
+            bg_color='#c0392b',
+            modal=True,
+            auto_close_ms=5000
+        )
+    
     # =====================================================================
     #  Inbound message handling
     # =====================================================================
@@ -560,7 +599,7 @@ class MantaControllerGUI:
         
         elif status == STATUS_ERROR:
             self.set_status_message(f"Pico error (code 0x{info1:02X}).")
-            self._show_error(info1)
+            self._show_error(info1, cmd=info2)
             if self._sequence_running:
                 self._sequence_running = False
                 self._dismiss_lockout()
@@ -578,6 +617,15 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"WARNING: could not open serial: {e}")
         link = None
+    
+    if link is not None:
+        print("Pinging Pico...", end=' ', flush=True)
+        if link.ping(timeout=1.0):
+            print("OK")
+        else:
+            print("NO RESPONSE")
+            print("  Pico is not responding. The GUI will still launch,")
+            print("  but commands will not work until the link is restored.")
     
     root = tk.Tk()
     gui = MantaControllerGUI(root, link=link)
