@@ -53,10 +53,7 @@ class NumPad(tk.Toplevel):
         super().__init__(parent)
         self.title("Edit value")
         self.configure(bg=self.BG)
-        self.geometry(f"{self.SCREEN_W}x{self.SCREEN_H}+0+0")
-        self.attributes('-fullscreen', True)
         self.transient(parent)
-        self.grab_set()                          # modal
         self.protocol("WM_DELETE_WINDOW", self._cancel)
         self.bind('<Escape>', lambda e: self._cancel())
 
@@ -77,12 +74,39 @@ class NumPad(tk.Toplevel):
         self._build_ui(title)
         self._refresh_display()
 
+        # Go fullscreen *after* the widgets exist, and size to the panel's
+        # real resolution rather than an assumed 800x480. A hardcoded geometry
+        # that doesn't match the drawable area — or a title bar left behind
+        # when the WM ignores -fullscreen — is what clips the bottom row.
+        self._go_fullscreen()
+        self.grab_set()                          # modal
+
+    def _go_fullscreen(self):
+        self.update_idletasks()
+        sw = self.winfo_screenwidth()
+        sh = self.winfo_screenheight()
+        self.geometry(f"{sw}x{sh}+0+0")
+        try:
+            # Preferred path: the WM fills the panel and drops the title bar.
+            self.attributes('-fullscreen', True)
+        except tk.TclError:
+            # Bare X / no WM: -fullscreen is unsupported, so strip decorations
+            # ourselves so nothing is pushed off the bottom edge.
+            self.overrideredirect(True)
+        self.lift()
+        self.focus_force()
+
     # ------------------------------------------------------------------ UI
     def _build_ui(self, title):
-        # Root grid: 5 rows (header / value / error / digits / bottom)
+        # Root grid: 5 rows (header / value / error / digits / bottom).
+        # Labels take natural height; the button area (rows 3-4) absorbs all
+        # the slack so the keys stay large and nothing overflows the panel.
         self.columnconfigure(0, weight=1)
-        for r in range(5):
-            self.rowconfigure(r, weight=1)
+        self.rowconfigure(0, weight=0)           # header
+        self.rowconfigure(1, weight=0)           # value
+        self.rowconfigure(2, weight=0)           # error
+        self.rowconfigure(3, weight=1)           # buttons
+        self.rowconfigure(4, weight=1)
 
         # --- Header: parameter label ---
         hdr = tk.Label(self, text=title, bg=self.BG, fg=self.FG,
@@ -230,4 +254,3 @@ class NumPad(tk.Toplevel):
         Safe to call when no numpad is open."""
         if cls._active is not None and cls._active.winfo_exists():
             cls._active._cancel()
-        
